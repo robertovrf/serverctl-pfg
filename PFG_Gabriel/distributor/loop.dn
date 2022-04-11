@@ -1,0 +1,10 @@
+component provides App requires time.Timer timer,io.Output out{
+
+
+int App:main(AppParam params[]){
+  while (true){
+    timer.sleep(10000)
+  }
+  return 0
+}
+}

@@ -1,0 +1,39 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: remotedist1
+  labels:
+    app: remotedist1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: remotedist1
+  template:
+    metadata:
+      labels:
+        app: remotedist1
+    spec:
+      containers:
+      - name: remotedist1
+        image: docker.io/rsdias/distributor:distributor
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 5000
+        - containerPort: 5001
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: remotedist1
+spec:
+  ports:
+  - port: 5000
+    name: tcp1
+    targetPort: 5000
+  - port : 5001
+    name: tcp2
+    targetPort: 5001
+  selector:
+    app: remotedist1
+  type: ClusterIP
