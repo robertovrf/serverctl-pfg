@@ -1,0 +1,60 @@
+data Group {
+	Data cells[]
+	}
+
+/*
+{ "description" : "Search for values in an array."}
+*/
+
+interface Search {
+	
+	/*
+	{ "@description" : "Search an array for cells matching a template, returning all matching cells.",
+			"list" : "The array to search.",
+			"field" : "The field to search against.",
+			"template" : "An instance of the same type as the data held in list, in which the field to match against is set to the value being searched for."
+			"@return" : "An array of cells matching the search term.",
+			"@deprecated" : true
+	}
+	*/
+	Data[] search(Data list[], TypeField field, Data template)
+	
+	/*
+	{ "@description" : "Search an array for cells matching a template, returning all matching cells.",
+			"list" : "The array to search.",
+			"field" : "The field to search against.",
+			"template" : "An instance of the same type as the data held in list, in which the field to match against is set to the value being searched for."
+			"@return" : "An array of cells matching the search term."
+	}
+	*/
+	Data[] find(Data list[], TypeField field, Data template)
+	
+	/*
+	{ "@description" : "Search an array for a cell matching a template, returning the first matching cell.",
+			"list" : "The array to search.",
+			"field" : "The field to search against.",
+			"template" : "An instance of the same type as the data held in list, in which the field to match against is set to the value being searched for."
+			"@return" : "An array of cells matching the search term."
+	}
+	*/
+	Data findFirst(Data list[], TypeField field, Data template)
+	
+	/*
+	{ "@description" : "Search an array for cells that have the same value for the given field.",
+			"list" : "The array to search.",
+			"field" : "The field to find duplicates of.",
+			"@return" : "An array of cells that have duplicates in the source list."
+	}
+	*/
+	Data[] findDuplicates(Data list[], TypeField field)
+	
+	/*
+	{ "@description" : "Search an array for cells that have the same value for the given field, grouping those cells together.",
+			"list" : "The array to search.",
+			"field" : "The field to group by.",
+			"@return" : "An array of groups, each one containing the cells in that group."
+	}
+	*/
+	Group[] groupBy(Data list[], TypeField field)
+	
+	}

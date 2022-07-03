@@ -1,0 +1,9 @@
+/*
+* KeyEventObject interface
+* A callback interface for objects that want to be notified of detailed keyboard events.
+*/
+
+interface KeyEventObject extends XYMouseObject {
+	void keyDown(int keyID)
+	void keyUp(int keyID)
+	}

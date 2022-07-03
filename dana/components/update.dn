@@ -1,0 +1,167 @@
+const int PARA_WIDTH = 60
+const int PARA_INDENT = 4
+
+data VersionData {
+	int number
+	char date[]
+}
+
+data UpdateStatus {
+	char lastCheck[]
+	char lastReminder[]
+	}
+
+data ChangeLog {
+	int version
+	char date[]
+	bool sourceBreak
+	bool objectBreak
+	char shortNote[]
+	char releaseNotes[]
+	String language[]
+	String compiler[]
+	String runtime[]
+	String installation[]
+	String stdlib[]
+	String natlib[]
+	}
+
+component provides App requires io.Output out, data.IntUtil iu, data.StringUtil stringUtil, System sys, net.http.HTTPRequest req, data.json.JSONEncoder encoder, os.SystemInfo osi, io.FileSystem fileSystem, io.File, time.Calendar cal {
+	
+	bool sourceBreak
+	bool objectBreak
+	
+	void printParagraph(char txt[], int width, int indent)
+		{
+		String parts[] = stringUtil.explode(txt, " ")
+		
+		int currentWidth = 0
+		
+		for (int i = 0; i < parts.arrayLength; i++)
+			{
+			if (currentWidth + parts[i].string.arrayLength < width)
+				{
+				out.print(" $(parts[i].string)")
+				currentWidth += parts[i].string.arrayLength
+				}
+				else
+				{
+				out.println("")
+				for (int j = 0; j < indent; j++) out.print(" ")
+				out.print(" $(parts[i].string)")
+				currentWidth = parts[i].string.arrayLength
+				}
+			}
+		
+		out.println("")
+		}
+	
+	void printList(char name[], String items[])
+		{
+		if (items.arrayLength > 0)
+			{
+			out.println(" $name ")
+			for (int j = 0; j < items.arrayLength; j++)
+				{
+				out.print("  - ")
+				printParagraph(items[j].string, PARA_WIDTH, PARA_INDENT)
+				}
+			}
+		}
+	
+	void printChangeLog(ChangeLog changes[])
+		{
+		for (int i = changes.arrayLength-1; i != INT_MAX; i--)
+			{
+			out.println("\n-- Version $(changes[i].version) --")
+			
+			printList(" Language: ", changes[i].language)
+			printList(" Compiler: ", changes[i].compiler)
+			printList(" Runtime: ", changes[i].runtime)
+			printList(" Installation: ", changes[i].installation)
+			printList(" Standard library: ", changes[i].stdlib)
+			printList(" Native libraries: ", changes[i].natlib)
+			
+			if (changes[i].sourceBreak) sourceBreak = true
+			if (changes[i].objectBreak) objectBreak = true
+			
+			if (changes[i].shortNote.arrayLength != 0) printParagraph("\nQuick notes: $(changes[i].shortNote)", PARA_WIDTH, 0)
+			if (changes[i].releaseNotes.arrayLength != 0) out.println("Detailed notes: $(changes[i].releaseNotes)")
+			}
+		}
+	
+	ChangeLog[] getChangeLog(int version)
+		{
+		ChangeLog result[] = encoder.jsonToArray(req.get("http://www.projectdana.com/dana/timeline/$version", null).content, typeof(ChangeLog[]), null)
+		
+		return result
+		}
+
+	int App:main(AppParam params[])
+		{
+		// -- check for a new version --
+		
+		HTTPResponse r = req.get("http://www.projectdana.com/dana/version", null)
+
+		if (r == null)
+			{
+			out.println("[failed to connect to server]")
+			return 1
+			}
+
+		if (r.responseCode != "200")
+			{
+			out.println("[failed to connect to server (HTTP error $(r.responseCode))]")
+			return 1
+			}
+		
+		VersionData vd = encoder.jsonToData(r.content, typeof(VersionData), null)
+
+		if (vd == null)
+			{
+			out.println("[response format mismatch from server; please check manually for a new version at http://www.projectdana.com]")
+			return 1
+			}
+
+		if (vd.number != sys.getVersion().intFromString())
+			{
+			ChangeLog changes[] = getChangeLog(sys.getVersion().intFromString())
+			
+			out.println("Updates since your current version:")
+			
+			if (changes.arrayLength == 0)
+				out.println("(unknown - connection or server failure?)")
+				else
+				printChangeLog(changes)
+			
+			out.println("\nNew version available: $(vd.number)")
+			out.println("Release date: $(vd.date)")
+			if (sourceBreak && objectBreak) out.println("Note: this update breaks source code and compiled file compatibility (see above)")
+			else if (sourceBreak) out.println("Note: this update breaks source code compatibility (see above)")
+			else if (objectBreak) out.println("Note: this update breaks compiled object file compatibility (see above)")
+			if (objectBreak) out.println("Note: you'll need to recompile any projects using 'dnc .' to work with this version")
+			out.println("Visit http://www.projectdana.com to download for your platform")
+			}
+			else
+			{
+			out.println("[your version of Dana is up to date]")
+			}
+		
+		// -- update status on when the most recent check was made --
+		
+		DateTime today = cal.getTime()
+		UpdateStatus ustatus = new UpdateStatus("$(today.year)/$(today.month)/$(today.day)", "$(today.year)/$(today.month)/$(today.day)")
+		
+		char home[] = osi.getVariable("DANA_HOME")
+		if (!fileSystem.exists("$home/resources-ext/update/"))
+			fileSystem.createDirectory("$home/resources-ext/update/")
+		
+		/*
+		File fd = new File("$home/resources-ext/update/status.json", File.CREATE)
+		fd.write(encoder.jsonFromData(ustatus, null))
+		fd.close()
+		*/
+		return 0
+		}
+
+}

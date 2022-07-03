@@ -1,0 +1,11 @@
+/*
+Timer component
+*/
+
+component provides time.Timer requires native time.Timer lib
+	{
+	void Timer:sleep(int sms)
+		{
+		lib.sleep(sms)
+		}
+	}

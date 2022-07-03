@@ -1,0 +1,11 @@
+/*
+ {"description" : "This interface can be provided as a secondary interface of an object, allowing it to then receive notifications of adaptation events."}
+*/
+
+interface InterceptEvents {
+	
+	/*
+	 { "@description" : "This function is called when the interceptor's internal reference has been updated with an adapted version." }
+	*/
+	void setTarget(store Object o)
+	}

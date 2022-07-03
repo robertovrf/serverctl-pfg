@@ -1,0 +1,53 @@
+interface SystemLib{
+	char[] getPlatformName()
+	char[] getPlatformVersion()
+	char[] getChipName()
+	char[] getHostName()
+	char[] getVar(char name[])
+	char[] getSystemFont(bool monospaced)
+	int getCoreCount()
+	int getMemorySize()
+	}
+
+component provides os.SystemInfo requires native SystemLib lib
+	{
+	char[] SystemInfo:getVariable(char name[])
+		{
+		return lib.getVar(name)
+		}
+	
+	char[] SystemInfo:getHostName()
+		{
+		return lib.getHostName()
+		}
+	
+	char[] SystemInfo:getPlatformName()
+		{
+		return lib.getPlatformName()
+		}
+	
+	char[] SystemInfo:getPlatformVersion()
+		{
+		return lib.getPlatformVersion()
+		}
+	
+	char[] SystemInfo:getSystemFont(bool monospaced)
+		{
+		return lib.getSystemFont(monospaced)
+		}
+	
+	char[] SystemInfo:getChipName()
+		{
+		return lib.getChipName()
+		}
+	
+	int SystemInfo:getCoreCount()
+		{
+		return lib.getCoreCount()
+		}
+	
+	int SystemInfo:getMemorySize()
+		{
+		return lib.getMemorySize()
+		}
+	}

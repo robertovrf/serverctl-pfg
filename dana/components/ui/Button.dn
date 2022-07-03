@@ -1,0 +1,108 @@
+const int TEXT_MARGIN = 3
+const int TEXT_PAD = 6
+
+component provides Button(AdaptEvents) requires io.Output out, data.IntUtil iu, Font, os.SystemInfo sysInfo {
+	
+	Font labelFont
+	int width
+	
+	Color borderColor = new Color(157, 188, 220, 255)
+	Color buttonColor = new Color(195, 195, 215, 255)
+	Color textColor = new Color(0, 0, 0, 255)
+	
+	Color buttonColorDisabled = new Color(195, 195, 195, 255)
+	Color textColorDisabled = new Color(10, 10, 10, 255)
+	
+	Button:Button(char myLabel[])
+		{
+		text = myLabel
+		labelFont = new Font(sysInfo.getSystemFont(false), 15)
+		width = labelFont.getTextWidth(text) + TEXT_PAD
+		}
+	
+	void AdaptEvents:active()
+		{
+		labelFont = new Font(sysInfo.getSystemFont(false), 15)
+		width = labelFont.getTextWidth(text) + TEXT_PAD
+		postRepaint()
+		}
+	
+	void Button:setPosition(int x, int y)
+		{
+		xPosition = x
+		yPosition = y
+		}
+	
+	void Button:paint(Canvas c)
+		{
+		if (!disabled)
+			{
+			c.drawRect(new Rect2D(xPosition, yPosition, width, 20, buttonColor))
+			c.drawText(new Point2D(xPosition+TEXT_MARGIN, yPosition+1, textColor), labelFont, text)
+			}
+			else
+			{
+			c.drawRect(new Rect2D(xPosition, yPosition, width, 20, buttonColorDisabled))
+			c.drawText(new Point2D(xPosition+TEXT_MARGIN, yPosition+1, textColorDisabled), labelFont, text)
+			}
+		}
+	
+	void Button:click(int x, int y, int button)
+		{
+		if (disabled) return
+		
+		if (button == MouseButtons.BUTTON_LEFT)
+			{
+			emitevent click()
+			}
+		}
+	
+	void Button:postRepaint()
+		{
+		emitevent repaint()
+		}
+	
+	void Button:setFocus()
+		{
+		emitevent requestFocus()
+		}
+	
+	void Button:setDisabled(bool d)
+		{
+		disabled = d
+		postRepaint()
+		}
+	
+	void Button:setText(char t[])
+		{
+		text = t
+		width = labelFont.getTextWidth(text) + TEXT_PAD
+		}
+	
+	char[] Button:getText()
+		{
+		return text
+		}
+	
+	Rect Button:getBounds()
+		{
+		return new Rect(xPosition, yPosition, width, 20)
+		}
+	
+	WH Button:getPreferredSize()
+		{
+		return new WH(width, 20)
+		}
+	
+	Point Button:getPosition()
+		{
+		return new Point(xPosition, yPosition)
+		}
+	
+	bool Button:equals(Object o)
+		{
+		Button bq = o
+		
+		return text == bq.getText()
+		}
+	}

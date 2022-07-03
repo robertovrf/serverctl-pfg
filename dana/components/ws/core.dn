@@ -1,0 +1,250 @@
+/*
+This is a very simple web framework. Run ws.core in your web app directory.
+URLs for your website are mapped as follows:
+
+ - Anything on SWC_PATH is directly served as static web content.
+
+ - Anything else goes to Web.get()/post() etc. depending on the request type, with the path passed in
+
+*/
+
+// example: dana ws.core -p 80 -cert ssl/www_projectdana_com.crt -key ssl/private_key.txt
+
+const char SWC_PATH[] = "/swc/"
+const int LISTEN_PORT = 8080
+const int LISTEN_PORT_SSL = 443
+// list of params
+const char PORT_NUM[] = "p"
+
+//the sub domains file has a format sub.domain.com:domain.com/path
+const char SUB_DOMAINS_FILE[] = "sub_domains.txt"
+//the mime types file has a format fileExt:mimeType
+const char MIME_TYPES_FILE[] = "mime_types.txt"
+//the static serve file has a format staticDirectory (for anything static that's not on /swc/)
+const char STATIC_SERVE_FILE[] = "static_serve.txt"
+
+data PathMapping {
+	char path[]
+	char file[]
+}
+
+data ParsedParam {
+	char type[]
+	char value[]
+	char raw[]
+}
+
+component provides App requires io.Output out, net.TCPServerSocket, net.TCPSocket, net.TLS, net.TLSContext, io.FileSystem fileSystem, io.File, data.StringUtil stringUtil, data.IntUtil iu, ws.RequestHandler {
+	
+	char wsHomePath[]
+	
+	int listenPort = 0
+	int sslPort = 0
+	char sslCertificateFile[] = null
+	char sslPrivateKeyFile[] = null
+	
+	TLSContext tlsContext
+	
+	String landingPages[] = new String[](new String("index.html"))
+	String staticDirectories[] = new String[](new String("/swc/"))
+	
+	ConfigData config = new ConfigData(landingPages = landingPages)
+	
+	void populateStaticServe()
+		{
+		if (fileSystem.exists(STATIC_SERVE_FILE))
+			{
+			File fd = new File(STATIC_SERVE_FILE, File.READ)
+			
+			char content[] = fd.read(fd.getSize())
+			
+			String parts[] = content.explode("\r\n")
+			
+			config.staticServe = new String[](staticDirectories, parts)
+			}
+			else
+			{
+			config.staticServe = new String[](staticDirectories)
+			}
+		}
+	
+	void loadMIMETypes()
+		{
+		//TODO: update this to cache the file in a key/val format, and re-read only if the file's modified date has changed...
+		if (fileSystem.exists("$wsHomePath$MIME_TYPES_FILE"))
+			{
+			File fd = new File("$wsHomePath$MIME_TYPES_FILE", File.READ)
+			
+			String mediaTypes[] = fd.read(fd.getSize()).explode("\r\n ")
+			
+			fd.close()
+			
+			KeyVal values[] = new KeyVal[mediaTypes.arrayLength]
+			
+			for (int i = 0; i < mediaTypes.arrayLength; i ++)
+				{
+				String parts[] = mediaTypes[i].string.explode(":")
+				
+				values[i] = new KeyVal(parts[0].string, parts[1].string)
+				}
+			
+			config.mimeTypes = values
+			}
+			else
+			{
+			out.println("[warning: web server expects a file '$MIME_TYPES_FILE' in its launch directory, with a format fileExt:mimeType")
+			}
+		}
+	
+	void loadSubdomains()
+		{
+		//TODO: update this to cache the file, and re-read only if the file's modified date has changed...
+		if (fileSystem.exists(SUB_DOMAINS_FILE))
+			{
+			File fd = new File(SUB_DOMAINS_FILE, File.READ)
+			
+			String hosts[] = fd.read(fd.getSize()).explode("\r\n ")
+			
+			fd.close()
+			
+			KeyVal values[] = new KeyVal[hosts.arrayLength]
+			
+			for (int i = 0; i < hosts.arrayLength; i ++)
+				{
+				String parts[] = hosts[i].string.explode(":")
+				
+				values[i] = new KeyVal(parts[0].string, parts[1].string)
+				}
+			
+			config.subdomains = values
+			}
+		}
+	
+	bool parseParams(AppParam params[])
+		{
+		for (int i = 0; i < params.arrayLength; i++)
+			{
+			if (params[i].string == "-p")
+				{
+				if (i + 1 >= params.arrayLength) throw new Exception("expected a port number after -p")
+				if (!stringUtil.isNumeric(params[i+1].string)) throw new Exception("expected a port number after -p")
+				
+				listenPort = iu.intFromString(params[i+1].string)
+				
+				i ++
+				}
+				else if (params[i].string == "-pssl")
+				{
+				if (i + 1 >= params.arrayLength) throw new Exception("expected a port number after -pssl")
+				if (!stringUtil.isNumeric(params[i+1].string)) throw new Exception("expected a port number after -pssl")
+				
+				sslPort = iu.intFromString(params[i+1].string)
+				
+				i ++
+				}
+				else if (params[i].string == "-cert")
+				{
+				if (i + 1 >= params.arrayLength) throw new Exception("expected a certificate file name after -cert")
+				if (!fileSystem.exists(params[i+1].string)) throw new Exception("file path $(params[i+1].string) not found")
+				
+				sslCertificateFile = params[i+1].string
+				}
+				else if (params[i].string == "-key")
+				{
+				if (i + 1 >= params.arrayLength) throw new Exception("expected a private key file name after -key")
+				if (!fileSystem.exists(params[i+1].string)) throw new Exception("file path $(params[i+1].string) not found")
+				
+				sslPrivateKeyFile = params[i+1].string
+				}
+			}
+		
+		return true
+		}
+	
+	bool loadSSLContext(char certificate[], byte privateKey[])
+		{
+		File fd = new File(sslCertificateFile, File.READ)
+		certificate = fd.read(fd.getSize())
+		fd.close()
+		
+		fd = new File(sslPrivateKeyFile, File.READ)
+		privateKey = fd.read(fd.getSize())
+		fd.close()
+		
+		tlsContext = new TLSContext(TLSContext.SERVER)
+		//tlsContext.setCipherSet(TLSContext.CIPHER_ALL)
+		
+		if (!tlsContext.setCertificate(certificate, privateKey)) throw new Exception("certificate or private key is invalid")
+		
+		return true
+		}
+	
+	void sslServer(RequestHandler rh)
+		{
+		TCPServerSocket server = new TCPServerSocket()
+		
+		if (!server.bind(TCPServerSocket.ANY_ADDRESS, sslPort))
+			return
+		
+		while (true)
+			{
+			TCPSocket client = new TCPSocket()
+			
+			if (client.accept(server))
+				{
+				TLS ssl = new TLS(tlsContext)
+				
+				//(note, the ssl accept is done within the request handler, because it can block)
+				rh.processStream(client, ssl, config)
+				}
+			}
+		}
+	
+	void App:setSourcePath(char path[], opt char dpath[])
+		{
+		wsHomePath = path
+		}
+	
+	int App:main(AppParam params[])
+		{
+		listenPort = LISTEN_PORT
+		sslPort = LISTEN_PORT_SSL
+		
+		if (!parseParams(params)) return 1
+		
+		//parse list of static-serve directories, if any
+		populateStaticServe()
+		loadMIMETypes()
+		loadSubdomains()
+		
+		RequestHandler rh = new RequestHandler()
+		
+		//start SSL/TLS server socket, if we've been given a certificate, on port 443
+		if (sslCertificateFile != null && sslPrivateKeyFile != null)
+			{
+			if (!loadSSLContext(sslCertificateFile, sslPrivateKeyFile))
+				return 1
+			
+			asynch::sslServer(rh)
+			}
+		
+		//start server
+		TCPServerSocket s = new TCPServerSocket()
+		
+		if (!s.bind(TCPServerSocket.ANY_ADDRESS, listenPort))
+			{
+			throw new Exception("Failed to bind master socket")
+			}
+		
+		while (true)
+			{
+			TCPSocket cs = new TCPSocket()
+			if (cs.accept(s))
+				{
+				rh.processStream(cs, null, config)
+				}
+			}
+		
+		return 0
+		}
+	}

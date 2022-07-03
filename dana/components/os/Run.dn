@@ -1,0 +1,21 @@
+data VC{
+	int result
+	}
+
+interface RunLib{
+	bool execute(char name[], VC result)
+	}
+
+component provides os.Run requires native RunLib lib {
+	
+	RunStatus Run:execute(char name[])
+		{
+		RunStatus result = new RunStatus()
+		
+		VC res = new VC()
+		result.executed = lib.execute(name, res)
+		result.result = res.result
+		
+		return result
+		}
+	}

@@ -1,0 +1,524 @@
+data GraphicsItem{
+	GraphicsObject object
+	GraphicsItem next
+	GraphicsItem prev
+	}
+
+data ClickableItem{
+	ClickableObject object
+	ClickableItem next
+	ClickableItem prev
+	}
+
+data XYListener{
+	XYMouseObject object
+	XYListener next
+	XYListener prev
+	}
+
+component provides Panel requires io.Output out {
+
+	GraphicsItem objects
+	GraphicsItem lastObject
+
+	ClickableItem clickObjects
+	ClickableItem lastClickObject
+
+	XYListener mouseListeners
+	XYListener mouseListenersEnd
+
+	XYMouseObject mouseOver
+	
+	//we store the item on which a mouse button was pressed down, to know if the button is release on the same item (triggering a click)
+	GraphicsObject clickDown
+
+	bool backgroundSet
+	Color backgroundColor = new Color(190, 190, 200, 255)
+	
+	HotKey focusHotKeys[]
+	KeyEventObject keyboardFocus
+
+	eventsink Events(EventData ed)
+		{
+		if (ed.type == GraphicsObject.[repaint])
+			{
+			postRepaint()
+			}
+		}
+
+	eventsink FocusEvents(EventData ed)
+		{
+		if (ed.type == KeyEventObject.[requestFocus])
+			{
+			changeFocusTo(ed.source)
+			emitevent requestFocus()
+			}
+			else if (ed.type == ClickableObject.[contextMenuOn])
+			{
+			ClickableObject co = ed.source
+			ContextMenuSpec spec = ed.details
+			ClickableObject owner = spec.owner
+			if (owner == null) owner = co
+			emitevent contextMenuOn(new ContextMenuSpec(spec.xAnchor + co.getPosition().x, spec.yAnchor + co.getPosition().y, spec.items, owner))
+			}
+			else if (ed.type == ClickableObject.[contextMenuOff])
+			{
+			emitevent contextMenuOff()
+			}
+		}
+
+	Panel:Panel()
+		{
+		}
+	
+	void Panel:setFocus()
+		{
+		emitevent requestFocus()
+		}
+	
+	HotKey[] Panel:recvFocus()
+		{
+		if (keyboardFocus != null)
+			{
+			return keyboardFocus.recvFocus()
+			}
+		
+		return null
+		}
+
+	void Panel:loseFocus()
+		{
+		if (keyboardFocus != null)
+			keyboardFocus.loseFocus()
+		}
+
+	void Panel:setPosition(int x, int y)
+		{
+		xPosition = x
+		yPosition = y
+		}
+
+	WH Panel:getPreferredSize()
+		{
+		return new WH(width, height)
+		}
+
+	void Panel:paint(Canvas c)
+		{
+		//occlude contents at panel boundary
+		c.pushSurface(new Rect(xPosition, yPosition, width, height), 0, 0, 255)
+
+		//background
+		c.drawRect(new Rect2D(0, 0, width, height, backgroundColor))
+
+		for (GraphicsItem gi = objects; gi != null; gi = gi.next)
+			{
+			gi.object.paint(c)
+			}
+
+		c.popSurface()
+		}
+
+	void Panel:addObject(GraphicsObject go)
+		{
+		GraphicsItem newItem = new GraphicsItem(go)
+
+		if (objects == null)
+			objects = newItem
+			else
+			lastObject.next = newItem
+
+		newItem.prev = lastObject
+		lastObject = newItem
+
+		if (go hastype ClickableObject)
+			addClickTarget(go)
+
+		if (go hastype XYMouseObject)
+			addMouseEventTarget(go)
+
+		if (go hastype KeyEventObject)
+			{
+			KeyEventObject ko = go
+			sinkevent FocusEvents(ko)
+			}
+
+		sinkevent Events(go)
+
+		postRepaint()
+		}
+
+	void Panel:remObject(GraphicsObject go)
+		{
+		for (GraphicsItem bi = objects; bi != null; bi = bi.next)
+			{
+			if (bi.object === go)
+				{
+				GraphicsItem td = bi
+
+				if (td.prev == null)
+					objects = td.next
+					else
+					td.prev.next = td.next
+
+				if (td.next == null)
+					lastObject = td.prev
+					else
+					td.next.prev = td.prev
+
+				break
+				}
+			}
+
+		if (go hastype ClickableObject)
+			remClickTarget(go)
+
+		if (go hastype XYMouseObject)
+			remMouseEventTarget(go)
+
+		postRepaint()
+		}
+
+	void Panel:clearObjects()
+		{
+		GraphicsItem iw = objects
+		while (iw != null)
+			{
+			GraphicsItem td = iw
+			iw = iw.next
+
+			td.next = null
+			td.prev = null
+			}
+
+		objects = null
+		lastObject = null
+
+		ClickableItem ci = clickObjects
+		while (ci != null)
+			{
+			ClickableItem td = ci
+			ci = ci.next
+
+			td.next = null
+			td.prev = null
+			}
+
+		clickObjects = null
+		lastClickObject = null
+		
+		XYListener mi = mouseListeners
+		while (mi != null)
+			{
+			XYListener td = mi
+			mi = mi.next
+
+			td.next = null
+			td.prev = null
+			}
+
+		mouseListeners = null
+		mouseListenersEnd = null
+
+		postRepaint()
+		}
+
+	GraphicsObjectItem[] Panel:getObjects()
+		{
+		return null
+		}
+
+	Rect Panel:getBounds()
+		{
+		return new Rect(xPosition, yPosition, width, height)
+		}
+
+	Point Panel:getPosition()
+		{
+		return new Point(xPosition, yPosition)
+		}
+
+	void Panel:postRepaint()
+		{
+		emitevent repaint()
+		}
+
+	void Panel:setBackground(Color c)
+		{
+		backgroundSet = true
+		backgroundColor = c
+		}
+
+	Color Panel:getBackground()
+		{
+		return backgroundColor
+		}
+
+	void Panel:setSize(int w, int h)
+		{
+		width = w
+		height = h
+		}
+
+	WH Panel:getSize()
+		{
+		return new WH(width, height)
+		}
+
+	void changeFocusTo(store KeyEventObject ko)
+		{
+		if (keyboardFocus !== ko)
+			{
+			if (keyboardFocus != null) keyboardFocus.loseFocus()
+			}
+
+		focusHotKeys = ko.recvFocus()
+
+		keyboardFocus = ko
+		}
+
+	void Panel:click(int x, int y, int button)
+		{
+		}
+	
+	void Panel:hotKeyClick(HotKey h)
+		{
+		if (keyboardFocus != null) keyboardFocus.hotKeyClick(h)
+		}
+	
+	void clickOn(int x, int y, int button)
+		{
+		for (ClickableItem ci = clickObjects; ci != null; ci = ci.next)
+			{
+			Rect r = ci.object.getBounds()
+
+			if (x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height)
+				{
+				if (clickDown === ci.object)
+					{
+					ci.object.click(x - r.x, y - r.y, button)
+
+					if (ci.object hastype KeyEventObject)
+						{
+						changeFocusTo(ci.object)
+						}
+					}
+				
+				break
+				}
+			}
+		}
+
+	void addClickTarget(store ClickableObject co)
+		{
+		ClickableItem nci = new ClickableItem(co)
+
+		if (clickObjects == null)
+			clickObjects = nci
+			else
+			lastClickObject.next = nci
+
+		nci.prev = lastClickObject
+		lastClickObject = nci
+		}
+
+	void remClickTarget(ClickableObject o)
+		{
+		for (ClickableItem ci = clickObjects; ci != null; ci = ci.next)
+			{
+			if (ci.object === o)
+				{
+				ClickableItem td = ci
+
+				if (td.prev == null)
+					clickObjects = td.next
+					else
+					td.prev.next = td.next
+
+				if (td.next == null)
+					lastClickObject = td.prev
+					else
+					td.next.prev = td.prev
+
+				break
+				}
+			}
+		}
+
+	void addMouseEventTarget(store XYMouseObject m)
+		{
+		XYListener nci = new XYListener(m)
+
+		if (mouseListeners == null)
+			mouseListeners = nci
+			else
+			mouseListenersEnd.next = nci
+
+		nci.prev = mouseListenersEnd
+		mouseListenersEnd = nci
+		}
+
+	void remMouseEventTarget(XYMouseObject m)
+		{
+		for (XYListener ci = mouseListeners; ci != null; ci = ci.next)
+			{
+			if (ci.object === m)
+				{
+				XYListener td = ci
+
+				if (td.prev == null)
+					mouseListeners = td.next
+					else
+					td.prev.next = td.next
+
+				if (td.next == null)
+					mouseListenersEnd = td.prev
+					else
+					td.next.prev = td.prev
+
+				break
+				}
+			}
+		}
+
+	void Panel:keyDown(int keyCode)
+		{
+		if (keyboardFocus != null)
+			{
+			keyboardFocus.keyDown(keyCode)
+			}
+		}
+
+	void Panel:keyUp(int keyCode)
+		{
+		if (keyboardFocus != null)
+			{
+			keyboardFocus.keyUp(keyCode)
+			}
+		}
+
+	void Panel:mouseDown(int x, int y, int button)
+		{
+		if (clickDown == null)
+			{
+			for (ClickableItem ci = clickObjects; ci != null; ci = ci.next)
+				{
+				Rect r = ci.object.getBounds()
+
+				if (x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height)
+					{
+					clickDown = ci.object
+					break
+					}
+				}
+			}
+		
+		for (XYListener ci = mouseListeners; ci != null; ci = ci.next)
+			{
+			Rect r = ci.object.getBounds()
+
+			if (x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height)
+				{
+				clickDown = ci.object
+				ci.object.mouseDown(x - r.x, y - r.y, button)
+				break
+				}
+			}
+		}
+
+	void Panel:mouseUp(int x, int y, int button)
+		{
+		for (XYListener ci = mouseListeners; ci != null; ci = ci.next)
+			{
+			Rect r = ci.object.getBounds()
+
+			if (x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height)
+				{
+				//we only register a mouse-up if this was the thing that got the mouse-down
+				if (ci === clickDown)
+					{
+					ci.object.mouseUp(x - r.x, y - r.y, button)
+					}
+					else if (clickDown hastype XYMouseObject)
+					{
+					XYMouseObject co = clickDown
+					r = co.getBounds()
+					co.mouseUp(x - r.x, y - r.y, button)
+					}
+				break
+				}
+			}
+		
+		clickOn(x, y, button)
+		
+		clickDown = null
+		}
+
+	void Panel:mouseMove(int x, int y)
+		{
+		bool overSomething
+
+		for (XYListener ci = mouseListeners; ci != null; ci = ci.next)
+			{
+			Rect r = ci.object.getBounds()
+
+			if (x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height)
+				{
+				if (mouseOver !== ci.object)
+					{
+					if (mouseOver != null)
+						{
+						mouseOver.mouseOut()
+						}
+
+					mouseOver = ci.object
+					mouseOver.mouseOver()
+					}
+
+				overSomething = true
+
+				ci.object.mouseMove(x - r.x, y - r.y)
+
+				break
+				}
+			}
+
+		if (!overSomething && mouseOver != null)
+			{
+			mouseOver.mouseOut()
+			mouseOver = null
+			}
+		}
+	
+	void Panel:mouseOut()
+		{
+		if (mouseOver != null)
+			{
+			mouseOver.mouseOut()
+			mouseOver = null
+			}
+		}
+	
+	void Panel:dropFile(int x, int y, char path[])
+		{
+		for (XYListener ci = mouseListeners; ci != null; ci = ci.next)
+			{
+			Rect r = ci.object.getBounds()
+
+			if (x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height)
+				{
+				XYMouseObject co = ci.object
+				co.dropFile(x - r.x, y - r.y, path)
+				
+				break
+				}
+			}
+		}
+	
+	void Panel:setDisabled(bool d)
+		{
+		disabled = d
+		postRepaint()
+		}
+
+	}

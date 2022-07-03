@@ -1,0 +1,47 @@
+component 
+  provides 
+    serverctl.Serverctl 
+  requires 
+    io.Output out,
+    net.http.HTTPRequest httpreq,
+    data.json.JSONEncoder jsonEncoder,
+    data.json.JSONParser parser,
+    data.IntUtil iu
+{
+
+  HTTPResponse responseData = new HTTPResponse()
+
+  void Serverctl:get_service_names(){
+    responseData = httpreq.get("http://localhost:5000/pods")
+    out.println("$(responseData.responseCode)")
+    out.println("$(responseData.content)")
+  }
+
+  int Serverctl:get_quantity(){
+    responseData = httpreq.get("http://localhost:5000/pods/quantity")
+    return iu.intFromString(responseData.content)
+  }
+
+  void Serverctl:create_service(char name[]){
+    Header header = new Header()
+    header.key = "Content-Type"
+    header.value = "application/json"
+    Service s = new Service()
+    s.name = name
+    char encoded[] = jsonEncoder.jsonFromData(s, null)
+    responseData = httpreq.post("http://localhost:5000/pods/service", header, encoded)
+    out.println("$(responseData.responseCode)")
+  }
+
+  void Serverctl:create_pods(int quantity){
+    Header header = new Header()
+    header.key = "Content-Type"
+    header.value = "application/json"
+    Service s = new Service()
+    s.name = "remotedist"
+    s.quantity = quantity
+    char encoded[] = jsonEncoder.jsonFromData(s, null)
+    responseData = httpreq.post("http://localhost:5000/pods/new", header, encoded)
+    out.println("$(responseData.responseCode)")
+  }
+}

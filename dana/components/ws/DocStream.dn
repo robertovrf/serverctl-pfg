@@ -1,0 +1,232 @@
+data Part {
+	char content[]
+	Part next
+	}
+
+data ResponseContext {
+	int code
+	char reason[]
+	int length
+	Header headers[]
+	
+	Part responseParts
+	Part responseEnd
+	
+	ResponseContext stack
+	}
+
+component provides DocStream requires data.IntUtil intUtil, io.Output out, data.StringUtil stringUtil, encoding.Encoder:uri encoder {
+	
+	Header requestHeaders[]
+	Header sessionKeys[]
+	Header newSessionKeys[]
+	
+	Stream socket
+	
+	ResponseContext context = new ResponseContext(200, "OK")
+	
+	bool sentResponse
+	bool isStream
+	
+	DocStream:DocStream(Stream s, Header headers[])
+		{
+		socket = s
+		requestHeaders = headers
+		
+		//NOTE: we may want to always use the "Cache-Control: no-store" header for dynamic content...
+		
+		//extract session state from headers, by scanning for any "Cookie:" key and extracting sub-headers
+		for (int i = 0; i < requestHeaders.arrayLength; i++)
+			{
+			if (stringUtil.lowercase(requestHeaders[i].key) == "cookie")
+				{
+				Header subh[] = getSubHeaders(requestHeaders[i].value)
+				sessionKeys = new Header[](sessionKeys, subh)
+				}
+			}
+		
+		//uri-decode all cookie values
+		for (int i = 0; i < sessionKeys.arrayLength; i++)
+			{
+			sessionKeys[i].value = encoder.decode(sessionKeys[i].value)
+			}
+		}
+	
+	Header[] getSubHeaders(char content[])
+		{
+		Header headers[]
+		String parts[] = stringUtil.explode(content, ";")
+		
+		for (int i = 0; i < parts.arrayLength; i++)
+			{
+			int ndx = stringUtil.find(parts[i].string, "=") + 1
+			char key[] = stringUtil.trim(stringUtil.subString(parts[i].string, 0, ndx - 1))
+			char value[] = stringUtil.trim(stringUtil.subString(parts[i].string, ndx, parts[i].string.arrayLength - ndx))
+			
+			headers = new Header[](headers, new Header(key, value))
+			}
+		
+		return headers
+		}
+	
+	void DocStream:pushContext()
+		{
+		ResponseContext newContext = new ResponseContext(200, "OK")
+		
+		newContext.stack = context
+		
+		context = newContext
+		}
+	
+	void DocStream:popContext()
+		{
+		ResponseContext pop = context.stack
+		context.stack = null
+		
+		if (pop.responseParts == null)
+			pop.responseParts = context.responseParts
+			else
+			pop.responseEnd.next = context.responseParts
+		
+		if (context.responseEnd != null)
+			pop.responseEnd = context.responseEnd
+		
+		pop.length += context.length
+		
+		context = pop
+		}
+	
+	Header[] DocStream:getRequestHeaders()
+		{
+		return requestHeaders
+		}
+	
+	void DocStream:setStatusCode(int code, char reason[], bool stream)
+		{
+		isStream = stream
+		
+		context.code = code
+		context.reason = reason
+		}
+	
+	void DocStream:setHeaders(store Header headers[])
+		{
+		for (int i = 0; i < headers.arrayLength; i++)
+			{
+			if (headers[i].key == "content-length")
+				{
+				//set a flag for this
+				break
+				}
+			}
+		
+		context.headers = headers
+		}
+	
+	void DocStream:write(char dt[])
+		{
+		if (isStream)
+			{
+			socket.send(dt)
+			}
+			else
+			{
+			Part p = new Part(dt)
+			
+			if (context.responseParts == null)
+				context.responseParts = p
+				else
+				context.responseEnd.next = p
+			
+			context.responseEnd = p
+			
+			context.length += dt.arrayLength
+			}
+		}
+	
+	void DocStream:setSessionKey(char key[], char value[])
+		{
+		//NOTE: we only need to send back Set-Cookie if anything has actually changed...
+		
+		for (int i = 0; i < sessionKeys.arrayLength; i++)
+			{
+			if (sessionKeys[i].key == key)
+				{
+				sessionKeys[i].value = value
+				break
+				}
+			}
+		
+		newSessionKeys = new Header[](newSessionKeys, new Header("Set-Cookie", "$key=$(encoder.encode(value))"))
+		}
+	
+	char[] DocStream:getSessionKey(char key[])
+		{
+		for (int i = 0; i < sessionKeys.arrayLength; i++)
+			{
+			if (sessionKeys[i].key == key)
+				return sessionKeys[i].value
+			}
+		
+		return null
+		}
+	
+	void DocStream:remSessionKey(char key[])
+		{
+		// the best way to attempt cookie deletion is to set an expiry date on that cookie, with the date in the past, though note that browsers can technically choose to ignore this
+		
+		for (int i = 0; i < sessionKeys.arrayLength; i++)
+			{
+			if (sessionKeys[i].key == key)
+				{
+				sessionKeys[i].value = null
+				newSessionKeys = new Header[](newSessionKeys, new Header("Set-Cookie", "$key=; expires=Thu, 01 Jan 1970 00:00:00 GMT"))
+				}
+			}
+		}
+	
+	void DocStream:sendResponse()
+		{
+		if (!sentResponse)
+			{
+			char hdrLine[] = new char[]("HTTP/1.1 ", intUtil.makeString(context.code), " ", context.reason, "\r\n")
+			socket.send(hdrLine)
+			
+			if (!isStream)
+				{
+				//send the total length of our response
+				socket.send("content-length: $(context.length)\r\n")
+				}
+			
+			for (int i = 0; i < context.headers.arrayLength; i++)
+				{
+				socket.send(new char[](context.headers[i].key, ":", context.headers[i].value, "\r\n"))
+				}
+			
+			//we need to include a "path" subheader here, or the cookie will only be sent back for the exact URL that set it
+			for (int i = 0; i < newSessionKeys.arrayLength; i++)
+				{
+				socket.send(new char[](newSessionKeys[i].key, ":", newSessionKeys[i].value, "; Path=/\r\n"))
+				}
+			
+			socket.send("\r\n")
+			
+			if (!isStream)
+				{
+				//send all of the response chunks
+				for (Part p = context.responseParts; p!= null; p = p.next)
+					{
+					socket.send(p.content)
+					}
+				}
+			
+			sentResponse = true
+			}
+		}
+	
+	bool DocStream:responseSent()
+		{
+		return sentResponse
+		}
+	
+	}

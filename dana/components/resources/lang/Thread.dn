@@ -1,0 +1,21 @@
+/*
+ {"description" : "This type represents a thread (for example returned via an asynch:: function call). Note that there is no implementing component of this interface and it cannot therefore be used as a required interface; the only way to gain a Thread instance is via asynch:: or this.thread operations."}
+*/
+
+interface Thread {
+	
+	/*
+	 {"@description" : "Block until this thread is signalled via signal()."}
+	*/
+	void wait()
+	
+	/*
+	 {"@description" : "Signal a thread, which may cause it to unblock from a call to wait()."}
+	*/
+	void signal()
+	
+	/*
+	 {"@description" : "Block until this thread exits."}
+	*/
+	void join()
+	}

@@ -1,0 +1,829 @@
+data XYListener{
+	XYMouseObject object
+	XYListener next
+	XYListener prev
+	}
+
+data GraphicsItem{
+	GraphicsObject object
+	GraphicsItem next
+	GraphicsItem prev
+	}
+
+data ClickableItem{
+	ClickableObject object
+	ClickableItem next
+	ClickableItem prev
+	}
+
+component provides Window requires io.Output out, data.IntUtil iu, IOWindow, ui.ContextMenu, locale.KeyMapping keyMapping {
+
+	Thread waitThread
+
+	GraphicsItem buffer
+	GraphicsItem bufferEnd
+
+	ContextMenu contextMenu
+	ClickableObject contextOwner
+	HotKey focusHotKeys[]
+	KeyEventObject keyboardFocus
+
+	ClickableItem clickItems
+	ClickableItem clickItemsEnd
+	
+	//we store the item on which a mouse button was pressed down, to know if the button is release on the same item (triggering a click)
+	GraphicsObject clickDown
+
+	XYListener mouseListeners
+
+	XYListener mouseListenersEnd
+	Mutex paintLock = new Mutex()
+
+	XYMouseObject mouseOver
+
+	int mouseX = 0
+	int mouseY = 0
+
+	int currentX = 100
+	int currentY = 80
+
+	int currentWidth = 500
+	int currentHeight = 500
+
+	bool isMaximised
+	int restoredWidth
+	int restoredHeight
+	int restoredX
+	int restoredY
+
+	bool fullScreen
+	
+	byte keyState //used for hot key triggers
+	
+	bool closed
+	
+	Mutex closeLock = new Mutex()
+
+	Color borderColor = new Color(190, 190, 200, 255)
+
+	IOWindow canvas
+
+	eventsink Events(EventData ed)
+		{
+		if (ed.type == IOWindow.[mouseUp])
+			{
+			MouseEvent me = ed.details
+			mouseUp(me.x, me.y, me.button)
+			}
+			else if (ed.type == IOWindow.[mouseDown])
+			{
+			MouseEvent me = ed.details
+			mouseDown(me.x, me.y, me.button)
+			}
+			else if (ed.type == IOWindow.[mouseMove])
+			{
+			MouseEvent me = ed.details
+			mouseMove(me.x, me.y)
+			}
+			else if (ed.type == IOWindow.[fileDrop])
+			{
+			DropEvent de = ed.details
+			dropFile(de.x, de.y, de.path)
+			}
+			else if (ed.type == IOWindow.[keyDown])
+			{
+			KeyEvent ke = ed.details
+			keyDown(ke.keyCode)
+			}
+			else if (ed.type == IOWindow.[keyUp])
+			{
+			KeyEvent ke = ed.details
+			keyUp(ke.keyCode)
+			}
+			else if (ed.type == IOWindow.[resizeWindow])
+			{
+			WH wh = ed.details
+			setSize(wh.width, wh.height)
+			}
+			else if (ed.type == IOWindow.[moveWindow])
+			{
+			Point xy = ed.details
+			currentX = xy.x
+			currentY = xy.y
+			}
+			else if (ed.type == IOWindow.[closeWindow])
+			{
+			emitevent close()
+			}
+		}
+
+	eventsink PaintEvents(EventData ed)
+		{
+		paint(null)
+		}
+	
+	eventsink ContextMenuEvents(EventData ed)
+		{
+		if (ed.type == ContextMenu.[repaint])
+			{
+			paint(null)
+			}
+			else if (ed.type == ContextMenu.[menuClick])
+			{
+			contextOwner.contextClick(ed.details)
+			
+			stopevent ContextMenuEvents(contextMenu)
+			contextMenu = null
+			postRepaint()
+			}
+		}
+
+	eventsink FocusEvents(EventData ed)
+		{
+		if (ed.type == KeyEventObject.[requestFocus])
+			{
+			changeFocusTo(ed.source)
+			}
+			else if (ed.type == ClickableObject.[contextMenuOn])
+			{
+			GraphicsObject srcObj = ed.source
+			contextOwner = ed.source
+			ContextMenuSpec spec = ed.details
+			if (spec.owner != null) contextOwner = spec.owner
+			
+			//create contextMenu, based on spec
+			contextMenu = new ContextMenu()
+			contextMenu.setPosition(spec.xAnchor + srcObj.getPosition().x, spec.yAnchor + srcObj.getPosition().y)
+			contextMenu.setItems(spec.items)
+			sinkevent ContextMenuEvents(contextMenu)
+			postRepaint()
+			}
+			else if (ed.type == ClickableObject.[contextMenuOff])
+			{
+			stopevent ContextMenuEvents(contextMenu)
+			contextMenu = null
+			postRepaint()
+			}
+		}
+
+	Window:Window(char title[])
+		{
+		canvas = new IOWindow()
+		
+		canvas.setTitle(title)
+
+		sinkevent Events(canvas)
+		}
+
+	void Window:setVisible(bool b)
+		{
+		canvas.setVisible(b)
+		}
+
+	void Window:setResizable(bool b)
+		{
+		canvas.setResizable(b)
+		}
+
+	void Window:setFullScreen(bool b)
+		{
+		canvas.setFullScreen(b)
+		fullScreen = b
+
+		WH sz = canvas.getResolution()
+		currentWidth = sz.width
+		currentHeight = sz.height
+		}
+
+	void Window:setTitle(char title[])
+		{
+		canvas.setTitle(title)
+		}
+
+	void Window:setIcon(PixelMap p)
+		{
+		canvas.setIcon(p)
+		}
+
+	void Window:close()
+		{
+		canvas.close()
+		
+		mutex(closeLock)
+			{
+			if (waitThread != null)
+				{
+				waitThread.signal()
+				}
+			
+			closed = true
+			}
+		}
+
+	void Window:waitForClose()
+		{
+		mutex(closeLock)
+			{
+			if (closed) return
+			waitThread = this.thread
+			}
+		
+		this.thread.wait()
+		}
+
+	void Window:addObject(GraphicsObject go)
+		{
+		GraphicsItem newItem = new GraphicsItem(go)
+
+		if (buffer == null)
+			buffer = newItem
+			else
+			bufferEnd.next = newItem
+
+		newItem.prev = bufferEnd
+		bufferEnd = newItem
+
+		if (go hastype ClickableObject)
+			{
+			addClickTarget(go)
+			}
+
+		if (go hastype XYMouseObject)
+			{
+			addMouseEventTarget(go)
+			}
+
+		if (go hastype KeyEventObject)
+			{
+			KeyEventObject ko = go
+			sinkevent FocusEvents(ko)
+			}
+
+		sinkevent PaintEvents(go)
+
+		paint(null)
+		}
+
+	void Window:remObject(GraphicsObject go)
+		{
+		for (GraphicsItem bi = buffer; bi != null; bi = bi.next)
+			{
+			if (bi.object === go)
+				{
+				GraphicsItem td = bi
+
+				stopevent PaintEvents(go)
+
+				if (td.prev == null)
+					buffer = td.next
+					else
+					td.prev.next = td.next
+
+				if (td.next == null)
+					bufferEnd = td.prev
+					else
+					td.next.prev = td.prev
+
+				if (go hastype ClickableObject)
+					remClickTarget(go)
+
+				if (go hastype XYMouseObject)
+					remMouseEventTarget(go)
+
+				break
+				}
+			}
+
+		paint(null)
+		}
+
+	GraphicsObjectItem[] Window:getObjects()
+		{
+		return null
+		}
+
+	void Window:clearObjects()
+		{
+		GraphicsItem iw = buffer
+		while (iw != null)
+			{
+			GraphicsItem td = iw
+			iw = iw.next
+
+			td.next = null
+			td.prev = null
+			}
+
+		buffer = null
+		bufferEnd = null
+
+		ClickableItem ci = clickItems
+		while (ci != null)
+			{
+			ClickableItem td = ci
+			ci = ci.next
+
+			td.next = null
+			td.prev = null
+			}
+
+		clickItems = null
+		clickItemsEnd = null
+		
+		XYListener mi = mouseListeners
+		while (mi != null)
+			{
+			XYListener td = mi
+			mi = mi.next
+
+			td.next = null
+			td.prev = null
+			}
+
+		mouseListeners = null
+		mouseListenersEnd = null
+
+		postRepaint()
+		}
+
+	void addClickTarget(store ClickableObject co)
+		{
+		ClickableItem nci = new ClickableItem(co)
+
+		if (clickItems == null)
+			clickItems = nci
+			else
+			clickItemsEnd.next = nci
+
+		nci.prev = clickItemsEnd
+		clickItemsEnd = nci
+		}
+
+	void remClickTarget(ClickableObject o)
+		{
+		for (ClickableItem ci = clickItems; ci != null; ci = ci.next)
+			{
+			if (ci.object === o)
+				{
+				ClickableItem td = ci
+
+				if (td.prev == null)
+					clickItems = td.next
+					else
+					td.prev.next = td.next
+
+				if (td.next == null)
+					clickItemsEnd = td.prev
+					else
+					td.next.prev = td.prev
+
+				break
+				}
+			}
+		}
+
+	void addMouseEventTarget(store XYMouseObject m)
+		{
+		XYListener nci = new XYListener(m)
+
+		if (mouseListeners == null)
+			mouseListeners = nci
+			else
+			mouseListenersEnd.next = nci
+
+		nci.prev = mouseListenersEnd
+		mouseListenersEnd = nci
+		}
+
+	void remMouseEventTarget(XYMouseObject m)
+		{
+		for (XYListener ci = mouseListeners; ci != null; ci = ci.next)
+			{
+			if (ci.object === m)
+				{
+				XYListener td = ci
+
+				if (td.prev == null)
+					mouseListeners = td.next
+					else
+					td.prev.next = td.next
+
+				if (td.next == null)
+					mouseListenersEnd = td.prev
+					else
+					td.next.prev = td.prev
+
+				break
+				}
+			}
+		}
+
+	void Window:setPosition(int x, int y)
+		{
+		currentX = x
+		currentY = y
+		canvas.setPosition(x, y)
+		}
+
+	void Window:setSize(int x, int y)
+		{
+		if (!fullScreen)
+			{
+			currentWidth = x
+			currentHeight = y
+			canvas.setSize(x, y)
+			}
+			else
+			{
+			WH sz = canvas.getResolution()
+			currentWidth = sz.width
+			currentHeight = sz.height
+			}
+
+		paint(null)
+		}
+
+	WH Window:getSize()
+		{
+		return new WH(currentWidth, currentHeight)
+		}
+
+	Rect Window:getRect()
+		{
+		return new Rect(currentX, currentY, currentWidth, currentHeight)
+		}
+
+	Point Window:getPosition()
+		{
+		return new Point(currentX, currentY)
+		}
+
+	void Window:setBackground(Color c)
+		{
+		canvas.setBackground(c)
+		}
+
+	Color Window:getBackground()
+		{
+		return null
+		}
+
+	void Window:paint(Canvas c)
+		{
+		mutex(paintLock)
+			{
+			for (GraphicsItem bi = buffer; bi != null; bi = bi.next)
+				{
+				bi.object.paint(canvas)
+				}
+
+			canvas.drawRectOutline(new Rect2D(0, 0, currentWidth, currentHeight, borderColor))
+
+			if (contextMenu != null)
+				{
+				contextMenu.paint(canvas)
+				}
+
+			canvas.paint()
+			}
+		}
+
+	WH Window:getPreferredSize()
+		{
+		return new WH(currentWidth, currentHeight)
+		}
+
+	Rect Window:getBounds()
+		{
+		return new Rect(0, 0, currentWidth, currentHeight)
+		}
+
+	void Window:postRepaint()
+		{
+		paint(null)
+		}
+	
+	void changeFocusTo(store KeyEventObject ko)
+		{
+		if (keyboardFocus !== ko)
+			{
+			if (keyboardFocus != null)
+				keyboardFocus.loseFocus()
+			}
+
+		focusHotKeys = ko.recvFocus()
+
+		keyboardFocus = ko
+		}
+
+	void Window:click(int x, int y, int button)
+		{
+		if (contextMenu != null)
+			{
+			Rect r = contextMenu.getBounds()
+
+			if (clickDown === contextMenu && x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height)
+				{
+				contextMenu.click(x - r.x, y - r.y, button)
+				return
+				}
+			}
+
+		for (ClickableItem ci = clickItems; ci != null; ci = ci.next)
+			{
+			Rect r = ci.object.getBounds()
+
+			if (x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height)
+				{
+				if (clickDown === ci.object)
+					{
+					if (contextMenu != null)
+						{
+						stopevent ContextMenuEvents(contextMenu)
+						contextMenu = null
+						postRepaint()
+						}
+
+					ci.object.click(x - r.x, y - r.y, button)
+
+					if (ci.object hastype KeyEventObject)
+						{
+						changeFocusTo(ci.object)
+						}
+					}
+
+				break
+				}
+			}
+		}
+
+	void Window:mouseDown(int x, int y, int button)
+		{
+		//first register what the mouse was pressed down on, for click handling
+		clickDown = null
+		
+		if (contextMenu != null)
+			{
+			Rect r = contextMenu.getBounds()
+
+			if (x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height)
+				{
+				clickDown = contextMenu
+				return
+				}
+			}
+		
+		if (clickDown == null)
+			{
+			for (ClickableItem ci = clickItems; ci != null; ci = ci.next)
+				{
+				Rect r = ci.object.getBounds()
+
+				if (x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height)
+					{
+					clickDown = ci.object
+					break
+					}
+				}
+			}
+		
+		//now fire the actual mouse down event
+		
+		for (XYListener ci = mouseListeners; ci != null; ci = ci.next)
+			{
+			Rect r = ci.object.getBounds()
+
+			if (x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height)
+				{
+				if (clickDown == null) clickDown = ci.object
+				ci.object.mouseDown(x - r.x, y - r.y, button)
+				break
+				}
+			}
+		}
+
+	void Window:mouseUp(int x, int y, int button)
+		{
+		for (XYListener ci = mouseListeners; ci != null; ci = ci.next)
+			{
+			Rect r = ci.object.getBounds()
+
+			if (x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height)
+				{
+				//we only register a mouse-up if this was the thing that got the mouse-down
+				if (ci === clickDown)
+					{
+					ci.object.mouseUp(x - r.x, y - r.y, button)
+					}
+					else if (clickDown hastype XYMouseObject)
+					{
+					XYMouseObject co = clickDown
+					r = co.getBounds()
+					co.mouseUp(x - r.x, y - r.y, button)
+					}
+				
+				break
+				}
+			}
+		
+		click(x, y, button)
+		
+		clickDown = null
+		}
+
+	void Window:mouseMove(int x, int y)
+		{
+		mouseX = x
+		mouseY = y
+
+		bool overSomething
+
+		if (contextMenu != null)
+			{
+			Rect r = contextMenu.getBounds()
+
+			if (x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height)
+				{
+				if (mouseOver !== contextMenu)
+					{
+					if (mouseOver != null)
+						{
+						mouseOver.mouseOut()
+						}
+
+					mouseOver = contextMenu
+					mouseOver.mouseOver()
+					}
+
+				overSomething = true
+
+				contextMenu.mouseMove(x - r.x, y - r.y)
+				}
+
+			if (!overSomething && mouseOver != null)
+				{
+				mouseOver.mouseOut()
+				mouseOver = null
+				}
+
+			return
+			}
+
+		for (XYListener ci = mouseListeners; ci != null; ci = ci.next)
+			{
+			Rect r = ci.object.getBounds()
+
+			if (x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height)
+				{
+				if (mouseOver !== ci.object)
+					{
+					if (mouseOver != null)
+						{
+						mouseOver.mouseOut()
+						}
+
+					mouseOver = ci.object
+					mouseOver.mouseOver()
+					}
+
+				overSomething = true
+
+				ci.object.mouseMove(x - r.x, y - r.y)
+
+				break
+				}
+			}
+
+		if (!overSomething && mouseOver != null)
+			{
+			mouseOver.mouseOut()
+			mouseOver = null
+			}
+		}
+	
+	void Window:dropFile(int x, int y, char path[])
+		{
+		for (XYListener ci = mouseListeners; ci != null; ci = ci.next)
+			{
+			Rect r = ci.object.getBounds()
+
+			if (x >= r.x && x <= r.x + r.width && y >= r.y && y <= r.y + r.height)
+				{
+				XYMouseObject co = ci.object
+				co.dropFile(x - r.x, y - r.y, path)
+				
+				break
+				}
+			}
+		}
+	
+	bool triggerHotKey(int keyCode)
+		{
+		for (int i = 0; i < focusHotKeys.arrayLength; i++)
+			{
+			if (keyState == focusHotKeys[i].modifier && keyCode == focusHotKeys[i].keyCode)
+				{
+				keyboardFocus.hotKeyClick(focusHotKeys[i])
+				
+				return true
+				}
+			}
+		
+		return false
+		}
+	
+	void Window:keyDown(int keyCode)
+		{
+		//capture key state, for hot keys
+		int kCode
+		if ((kCode = keyMapping.getKeyCode(keyCode)) != KeyCode.UNKNOWN)
+			{
+			if (kCode == KeyCode.SHIFT_LEFT || kCode == KeyCode.SHIFT_RIGHT)
+				{
+				keyState |= KeyState.KEY_SHIFT
+				}
+			
+			if (kCode == KeyCode.CTRL_LEFT || kCode == KeyCode.CTRL_RIGHT)
+				{
+				keyState |= KeyState.KEY_CTRL
+				}
+			
+			if (kCode == KeyCode.ALT_LEFT)
+				{
+				keyState |= KeyState.KEY_ALT
+				}
+			
+			if (kCode == KeyCode.CMD)
+				{
+				keyState |= KeyState.KEY_CMD
+				}
+			}
+		
+		//trigger a hot key, if any
+		if (!triggerHotKey(kCode))
+			{
+			//get the "keyboard focus" item, if any, and dispatch a key event to it
+			// (note this might be a panel, which in turn has a sub-item with keyboard focus)
+			
+			if (keyboardFocus != null)
+				{
+				keyboardFocus.keyDown(keyCode)
+				}
+			}
+		}
+
+	void Window:keyUp(int keyCode)
+		{
+		//capture key state, for hot keys
+		int kCode
+		if ((kCode = keyMapping.getKeyCode(keyCode)) != KeyCode.UNKNOWN)
+			{
+			if (kCode == KeyCode.SHIFT_LEFT || kCode == KeyCode.SHIFT_RIGHT)
+				{
+				keyState &= ~KeyState.KEY_SHIFT
+				}
+			
+			if (kCode == KeyCode.CTRL_LEFT || kCode == KeyCode.CTRL_RIGHT)
+				{
+				keyState &= ~KeyState.KEY_CTRL
+				}
+			
+			if (kCode == KeyCode.ALT_LEFT)
+				{
+				keyState &= ~KeyState.KEY_ALT
+				}
+			
+			if (kCode == KeyCode.CMD)
+				{
+				keyState &= ~KeyState.KEY_CMD
+				}
+			}
+		
+		//fire key to focused item, if any
+		if (keyboardFocus != null)
+			{
+			keyboardFocus.keyUp(keyCode)
+			}
+		}
+	
+	void Window:setDisabled(bool d)
+		{
+		disabled = d
+		postRepaint()
+		}
+
+	void Window:setFocus()
+		{
+		}
+
+	HotKey[] Window:recvFocus()
+		{
+		return null
+		}
+
+	void Window:loseFocus()
+		{
+
+		}
+
+	}

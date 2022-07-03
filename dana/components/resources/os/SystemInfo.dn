@@ -1,0 +1,45 @@
+/*
+{"description" : "Get basic information about the host operating system and physical machine."}
+*/
+
+interface SystemInfo{
+	/*
+	{"@description" : "Get the operating system name."}
+	*/
+	char[] getPlatformName()
+	
+	/*
+	{"@description" : "Get the operating system version."}
+	*/
+	char[] getPlatformVersion()
+	
+	/*
+	{"@description" : "Get the OS 'host name' (the computer's name)."}
+	*/
+	char[] getHostName()
+	
+	/*
+	{"@description" : "Get the value of an environment variable."}
+	*/
+	char[] getVariable(char name[])
+	
+	/*
+	{"@description" : "Get the default Dana font (regular or monospaced) for graphical user interfaces."}
+	*/
+	char[] getSystemFont(bool monospaced)
+	
+	/*
+	{"@description" : "Get the 'chip' name of the host machine's CPU, e.g. x86 or x64."}
+	*/
+	char[] getChipName()
+	
+	/*
+	{"@description" : "Get the total number of apparent CPU cores that the host machine has, including logical cores. Note that if Dana is running in a container or virtual machine, the value returned here may be different than the host's actual core count."}
+	*/
+	int getCoreCount()
+	
+	/*
+	{"@description" : "Get the total amount of apparent main memory that the host machine has, in megabytes. Note that if Dana is running in a container or virtual machine, the value returned here may be different than the host's actual main memory size."}
+	*/
+	int getMemorySize()
+	}
