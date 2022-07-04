@@ -106,45 +106,44 @@ component
     }
   }
 
-  void commandInterpret(char cmd[]) {
-    String cmdList[] = strUtil.explode(cmd, " ")
-
-    if (cmdList[0] == HELP) {
-      help()
-    } else if (cmdList[0] == CREATE ) {
-      out.print("Number of pods: \n")
-      int quantity = "1"
-      if (cmdList.length == 2) {
-        quantity = iu.intFromString(cmdList[1])
+	void commandInterpret(char cmd[]) {
+		String cmdList[] = strUtil.explode(cmd, " ")
+		char quantity[] 
+    if (cmdList.arrayLength == 1) {
+      if (cmd == HELP) {
+        help()
+      } else if (cmd == CREATE ) {
+        out.print("Number of pods: \n")
+        quantity = in.readln()
+        SCTL.create_pods(iu.intFromString(quantity))
+        t.sleep(3000) // Temp solution
+        out.println("$(iu.intFromString(quantity)) pods were created")
+      } else if (cmd == PROPAGATE) {
+        distribute("ListCPPropagate.o")
+      } else if (cmd == ALTERNATE) {
+        distribute("ListCPAlternate.o")
+      } else if (cmd == SHARDING) {
+        distribute("ListCPSharding.o")
+      } else if (cmd == LOCAL) {
+        local()
+      } else if (cmd == PERCEPTION) {
+        perception()
+      } else if (cmd == TEST) {
+        out.println("$(debugMSG) Starting test...")
+        local()
+        observationLoop(10, 1000)
+        distribute("ListCPPropagate.o")
+        observationLoop(10, 1000)
+        distribute("ListCPAlternate.o")
+        observationLoop(10, 1000)
+        distribute("ListCPSharding.o")
+        observationLoop(10, 1000)
+        out.println("$(debugMSG) Test finished!")
+      } else {
+        out.println("Invalid command.")
       }
-      SCTL.create_pods(quantity)
-      t.sleep(3000) // Temp solution
-      out.println("$quantity pods were created")
-    } else if (cmdList[0] == PROPAGATE) {
-      distribute("ListCPPropagate.o")
-    } else if (cmdList[0] == ALTERNATE) {
-      distribute("ListCPAlternate.o")
-    } else if (cmdList[0] == SHARDING) {
-      distribute("ListCPSharding.o")
-    } else if (cmdList[0] == LOCAL) {
-      local()
-    } else if (cmdList[0] == PERCEPTION) {
-      perception()
-    } else if (cmdList[0] == TEST) {
-      out.println("$(debugMSG) Starting test...")
-      local()
-      observationLoop(10, 1000)
-      distribute("ListCPPropagate.o")
-      observationLoop(10, 1000)
-      distribute("ListCPAlternate.o")
-      observationLoop(10, 1000)
-      distribute("ListCPSharding.o")
-      observationLoop(10, 1000)
-      out.println("$(debugMSG) Test finished!")
-    } else {
-      out.println("Invalid command.")
-    }
-  }
+		}
+	}
 
   char[] getRemoteConfig(char proxy[]) {
     for (int pointer = 0; pointer < remoteConfigs.arrayLength; pointer++) {

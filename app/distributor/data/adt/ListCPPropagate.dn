@@ -30,10 +30,6 @@ const char GET_LENGTH[]   = "getLength"
 const char GET_CONTENTS[] = "getContents"
 const char CLEAR_LIST[]   = "clearList"
 
-/* IPs */
-const char LOCALHOST[] = "localhost"
-const char remoteone[] = "remotedist1"
-const char remotetwo[] = "remotedist2"
 
 component provides List:heap(Destructor, AdaptEvents) requires data.json.JSONEncoder parser,
 	net.TCPSocket, net.TCPServerSocket, data.StringUtil strUtil, io.Output out, data.IntUtil iu,serverctl.Serverctl SCTL {
@@ -43,32 +39,7 @@ component provides List:heap(Destructor, AdaptEvents) requires data.json.JSONEnc
 		Mutex remoteListsIpsLock = new Mutex()
 		int pointer = 0
 
-		void setupRemoteDistsIPs() {
-			if (remoteDistsIps == null) {
-				remoteDistsIps = new IPAddr[2]
-				remoteDistsIps[0] = new IPAddr()
-				remoteDistsIps[0].ip = new char[](remoteone)
-				remoteDistsIps[0].port = 5000
-				remoteDistsIps[1] = new IPAddr()
-				remoteDistsIps[1].ip = new char[](remotetwo)
-				remoteDistsIps[1].port = 5000
-			}
-		}
-
-		void setupRemoteListsIPs() {
-			if (remoteListsIps == null) {
-				remoteListsIps = new IPAddr[2]
-				remoteListsIps[0] = new IPAddr()
-				remoteListsIps[0].ip = new char[](remoteone)
-				remoteListsIps[0].port = 5001
-				remoteListsIps[1] = new IPAddr()
-				remoteListsIps[1].ip = new char[](remotetwo)
-				remoteListsIps[1].port = 5001
-			}
-		}
-
 		void sendMsgToRemoteDists(char msg[]) {
-			//setupRemoteDistsIPs()
 			for (int i = 0; i < remoteDistsIps.arrayLength; i++) {
 				connectAndSend(remoteDistsIps[i], msg, true)
 			}
@@ -131,7 +102,6 @@ component provides List:heap(Destructor, AdaptEvents) requires data.json.JSONEnc
 	}
 
   void makeGroupRequest(char content[]) {
-		//setupRemoteListsIPs()
     IPAddr addr = null
     for (int i = 0; i < remoteListsIps.arrayLength; i++) {
       addr = remoteListsIps[i]
@@ -140,7 +110,6 @@ component provides List:heap(Destructor, AdaptEvents) requires data.json.JSONEnc
 	}
 
 	Response makeRequest(char content[]) {
-		//setupRemoteListsIPs()
 		Response resp = null
 		IPAddr addr = null
 		mutex(remoteListsIpsLock) {
@@ -242,7 +211,7 @@ component provides List:heap(Destructor, AdaptEvents) requires data.json.JSONEnc
 
 	// this is extremely hardcoded! ):
 	void AdaptEvents:active() {
-				int quantity = SCTL.get_quantity()
+		int quantity = SCTL.get_quantity()
         int final = SCTL.get_final()
         remoteDistsIps = new IPAddr[final]
         remoteListsIps = new IPAddr[final]

@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: serverctl
-        image: docker.io/rsdias/ctl:ctl
+        image: gcr.io/pfg2022/server-ctl:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 5000

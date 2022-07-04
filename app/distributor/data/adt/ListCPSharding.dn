@@ -46,19 +46,19 @@ component
     hash.Multiplicative hash,
     serverctl.Serverctl SCTL
 {
-	IPAddr remoteIps[] = []
+	IPAddr remoteIps[] = null
 
-	void setupRemoteIps() {
+	void xavasca() {
 		int numberOfPods = SCTL.get_quantity()
-    remotesIps = new IPAddr[numberOfPods]
-    char namePrefix[] = "remotedist"
-    for (i = 0; i < numberOfPods ; i++){
-      char finalname[] = "$namePrefix$j"
-      remoteIps[i] = new IPAddr()
-      remoteIps[i].ip = new char[](finalname)
+    	remoteIps = new IPAddr[numberOfPods]
+    	char namePrefix[] = "remotedist"
+    	for (int i = 0; i < numberOfPods ; i++){
+			char finalname[] = "$namePrefix$i"
+			remoteIps[i] = new IPAddr()
+			remoteIps[i].ip = new char[](finalname)
 			remoteIps[i].port = 5000
+		}
     }
-	}
 
 	Response parseResponse(char content[]) {
 		String helper[] = strUtil.explode(content, "!")
@@ -216,7 +216,7 @@ component
 		if (content != null) {
 			content = getContents()
 			char msg[] = new char[]("clearList!\r\r\r\r")
-			setupRemoteIPs()             
+			xavasca()             
 			for (int i = 0; i < remoteIps.arrayLength; i++) {
 				makeRequest(remoteIps[i], msg, true)
 			}
@@ -224,8 +224,8 @@ component
 	}
 
 	void AdaptEvents:active() {
-    if (content != null) {
-			setupRemoteIPs()
+		if (content != null) {
+			xavasca()
 			ShardState shardState[] = new ShardState[remoteIps.arrayLength]
 
 			for (int i = 0; i < content.arrayLength; i++) {

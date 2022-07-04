@@ -1,19 +1,15 @@
 FROM ubuntu:18.10
 
-COPY ../app .
-COPY ../dana .
-COPY ../naive.yaml .
+COPY ../app /home/app
+COPY ../dana ./home/dana
 
 # Dana instalattion
-RUN chmod 755 ~/dana
-ENV DANA_HOME=~/dana/
-ENV PATH="${PATH}:${DANA_HOME}"
+ENV DANA_HOME=/home/dana/
+ENV PATH "$PATH:${DANA_HOME}"
+RUN echo "${PATH}" >> /etc/bash.bashrc
+RUN chmod +x /home/dana/dana && chmod +x /home/dana/dnc
 
-# Cluster configuration
-CMD ["kubectl", "apply", "-f", "./naive.yaml"]
+WORKDIR /home/app/distributor
 
-WORKDIR ~/app/distributor
-
-#CMD ["dana", "-sp","../readn","RemoteDist.o","5000","5001"]
-#ENTRYPOINT ["/bin/bash", "./../scripts/bash/remotedist.sh"]
 CMD ["dana", "loop.o"]
+

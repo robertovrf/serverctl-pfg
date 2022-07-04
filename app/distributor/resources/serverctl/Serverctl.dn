@@ -5,7 +5,6 @@ data Service{
 
 interface Serverctl {
     void get_service_names()
-    void create_service(char name[])
     void create_pods(int quantity)
     int get_quantity()
     int get_final()

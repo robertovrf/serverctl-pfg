@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: distributor
-        image: docker.io/rsdias/distributor:distributor
+        image: gcr.io/pfg2022/remote-dist:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 5000

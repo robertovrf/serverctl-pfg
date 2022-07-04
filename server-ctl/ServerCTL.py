@@ -37,7 +37,7 @@ def load_deployment(deployment_name):
         spec:
           containers:
           - name: {deployment_name}
-            image: docker.io/rsdias/distributor:remote
+            image: gcr.io/pfg2022/remote-dist
             imagePullPolicy: Always
             ports:
             - containerPort: 5000
@@ -115,22 +115,6 @@ def get_names():
 @app.route('/pods/quantity', methods=['GET'])
 def get_amount():
   return str(number_of_pods)
-
-@app.route('/pods/service', methods=['POST'])
-def create_service():
-  if not request.json or not 'name' in request.json:
-    abort(400)
-
-  serviceName = request.json['name'].lower()
-
-  names.append({
-    'id': names[-1]['id'] + 1,
-    'name': request.json['name'],
-  })
-
-  create_deployment(serviceName)
-
-  return jsonify({'name': names[-1]}), 201
 
 @app.route('/pods/new', methods=['POST'])
 def createPods():
