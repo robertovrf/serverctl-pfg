@@ -5,7 +5,7 @@ docker build -t distributor:latest -f- . < distributor.Dockerfile
 docker build -t remote-dist:latest -f- . < remotedist.Dockerfile
 docker build -t server-ctl:latest -f- . < serverCTL.Dockerfile
 
-docker tag distributor:lastest robertovrf/distributor:latest
+docker tag distributor:latest robertovrf/distributor:latest
 docker tag remote-dist:latest robertovrf/remote-dist:latest
 docker tag server-ctl:latest robertovrf/server-ctl:latest
 
