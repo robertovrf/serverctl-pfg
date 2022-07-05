@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: distributor
-        image: gcr.io/pfg2022/distributor:latest
+        image: robertovrf/distributor:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 5000
