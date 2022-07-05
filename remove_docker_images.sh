@@ -1,3 +1,4 @@
+#!/bin/bash
 docker rmi server-ctl:latest
 docker rmi robertovrf/server-ctl:latest
 docker rmi remote-dist:latest
