@@ -1,7 +1,7 @@
 FROM ubuntu:18.10
 
-COPY ../app ./home/app
-COPY ../dana ./home/dana
+COPY /app ./home/app
+COPY /dana ./home/dana
 
 # Dana instalattion
 ENV DANA_HOME=/home/dana/
