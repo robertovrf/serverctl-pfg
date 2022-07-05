@@ -6,3 +6,4 @@ docker rmi robertovrf/remote-dist:latest
 docker rmi distributor:latest
 docker rmi python:3
 docker rmi ubuntu:18.10
+docker rmi robertovrf/distributor:latest
