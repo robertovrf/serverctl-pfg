@@ -1,6 +1,6 @@
 FROM ubuntu:18.10
 
-COPY ../app /home/app
+COPY ../app ./home/app
 COPY ../dana ./home/dana
 
 # Dana instalattion
