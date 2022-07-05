@@ -7,7 +7,8 @@ const char PROPAGATE[]  = "propagate"
 const char SHARDING[]   = "sharding"
 const char LOCAL[]      = "local"
 const char PERCEPTION[] = "perception"
-const char TEST[]		= "test"
+const char PODS[]       = "pods"
+const char TEST[]		    = "test"
 const char EXIT[]       = "exit"
 
 
@@ -47,15 +48,21 @@ component
     islocal = true
     perception.setConfig(localConfigs[0].string) 
     out.println("$(debugMSG) Local composition running.")
+    SCTL.delete_pods()
   }
 
   void distribute(char proxyInterface[]) {
     if ( !islocal ){
         local()
-        //serverctl delete pods
         distribute(proxyInterface)
         return 
     }
+
+    out.print("Number of pods: \n")
+    char quantity[] = in.readln()
+    SCTL.create_pods(iu.intFromString(quantity))
+    t.sleep(9000) // Temp solution
+    out.println("$(iu.intFromString(quantity)) pods were created")
 
     char remoteConfig[] = getRemoteConfig("data/adt/$(proxyInterface)")
     if (remoteConfig != null) {	
@@ -108,20 +115,9 @@ component
 
 	void commandInterpret(char cmd[]) {
 		String cmdList[] = strUtil.explode(cmd, " ")
-		char quantity[] 
     if (cmdList.arrayLength == 1) {
       if (cmd == HELP) {
         help()
-      } else if (cmd == CREATE ) {
-        out.print("Number of pods: \n")
-        quantity = in.readln()
-        SCTL.create_pods(iu.intFromString(quantity))
-        t.sleep(3000) // Temp solution
-        out.println("$(iu.intFromString(quantity)) pods were created")
-      } else if (cmd == PROPAGATE) {
-        distribute("ListCPPropagate.o")
-      } else if (cmd == ALTERNATE) {
-        distribute("ListCPAlternate.o")
       } else if (cmd == SHARDING) {
         distribute("ListCPSharding.o")
       } else if (cmd == LOCAL) {
@@ -139,6 +135,8 @@ component
         distribute("ListCPSharding.o")
         observationLoop(10, 1000)
         out.println("$(debugMSG) Test finished!")
+      } else if (cmd == PODS) {
+        SCTL.get_service_names()
       } else {
         out.println("Invalid command.")
       }
@@ -207,6 +205,7 @@ component
       out.print("distributor> ")
       cmd = in.readln()
     }
+    SCTL.delete_pods()
     return 0
   }
 }

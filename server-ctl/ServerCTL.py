@@ -4,16 +4,7 @@ from kubernetes import client, config
 
 app = Flask(__name__)
 
-names = [
-  {
-    'id': 1,
-    'name': u'serverctl-service',
-    'creator' : u'serverctl'
-  }
-]
-
-last_pod_index = 0
-number_of_pods = 0
+names = []
 
 #### Kubernetes Functions ####
 def load_deployment(deployment_name):
@@ -59,21 +50,33 @@ def load_service(deployment_name):
         targetPort: 5001
       selector:
         app: {deployment_name}
-        type: ClusterIP
+      type: ClusterIP
   ''')
   
-def create_deployment(name):
+def create_component(name):
+  # Create deployment
   deployment = load_deployment(name)
   k8s_apps_v1 = client.AppsV1Api()
   k8s_apps_v1.create_namespaced_deployment(body=deployment,namespace="default")
 
+  # Create service
   try:
     service = load_service(name)
     k8s_client = client.CoreV1Api()
     k8s_client.create_namespaced_service(body=service, namespace="default")
   except:
     print("Service already created")
-  
+
+def delete_component(name):
+  # Delete deployment
+  k8s_apps_v1 = client.AppsV1Api()
+  api_response = k8s_apps_v1.delete_namespaced_deployment(name=name, namespace="default")
+  print(api_response)
+
+# Delete service
+  k8s_client = client.CoreV1Api()
+  k8s_client.delete_namespaced_service(name=name, namespace="default")
+
 
 ### ENDPOINTS
 
@@ -83,29 +86,35 @@ def get_names():
 
 @app.route('/pods/quantity', methods=['GET'])
 def get_amount():
-  return str(number_of_pods)
+  return str(len(names))
 
 @app.route('/pods/new', methods=['POST'])
 def createPods():
   if not request.json or not 'name' in request.json:
     abort(400)
 
-  global last_pod_index
-  global number_of_pods
   quantity = request.json['quantity']
   name = request.json['name']
 
-  for x in range(0, quantity):
-    last_pod_index += 1
-    deployment_name = (name + str(last_pod_index)).lower()
-    create_deployment(deployment_name)
-    names.append({
-      'id': names[-1]['id'] + 1,
-      'name': deployment_name,
-      'creator' : 'distributor'
-    })
-  number_of_pods += quantity
-  return jsonify({'name' : names[-1]}), 201
+  global names
+
+  for pod_index in range(0, quantity):
+    deployment_name = (name + str(pod_index)).lower()
+    create_component(deployment_name)
+    names.append(deployment_name)
+  return jsonify(names), 201
+
+
+@app.route('/pods/delete', methods=['POST'])
+def deletePods():
+  
+  global names
+
+  for name in names:
+    delete_component(name)
+  
+  names.clear()
+  return jsonify(names), 201
 
 if __name__ == '__main__':
   #config.load_kube_config() # to work localy

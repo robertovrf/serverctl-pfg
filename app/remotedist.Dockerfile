@@ -11,6 +11,7 @@ RUN chmod +x /home/dana/dana && chmod +x /home/dana/dnc
 
 WORKDIR /home/app/distributor
 
+
 ENTRYPOINT ["/bin/bash", "./../scripts/bash/remotedist.sh"]
  
 

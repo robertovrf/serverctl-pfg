@@ -1,11 +1,14 @@
+uses data.String
+
 data Service{
   	char name[]
     int quantity
 }
 
 interface Serverctl {
-    void get_service_names()
+    String[] get_service_names()
     void create_pods(int quantity)
+    void delete_pods()
     int get_quantity()
     int get_final()
 }

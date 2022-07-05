@@ -1,3 +1,5 @@
+uses data.String
+
 component 
   provides 
     serverctl.Serverctl 
@@ -12,10 +14,11 @@ component
 
   HTTPResponse responseData = new HTTPResponse()
 
-  void Serverctl:get_service_names(){
+  String[] Serverctl:get_service_names(){
     responseData = httpreq.get(new char[](baseUrl, "/pods"))
     out.println("$(responseData.responseCode)")
     out.println("$(responseData.content)")
+    return jsonEncoder.jsonToArray(responseData.content, typeof(String[]), null)
   }
 
   int Serverctl:get_quantity(){
@@ -37,6 +40,14 @@ component
     s.quantity = quantity
     char encoded[] = jsonEncoder.jsonFromData(s, null)
     responseData = httpreq.post((new char[](baseUrl, "/pods/new")), header, encoded)
+    out.println("$(responseData.responseCode)")
+  }
+
+  void Serverctl:delete_pods() {
+    Header header = new Header()
+    header.key = "Content-Type"
+    header.value = "application/json"
+    responseData = httpreq.post((new char[](baseUrl, "/pods/delete")), header, null)
     out.println("$(responseData.responseCode)")
   }
 }

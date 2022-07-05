@@ -1,3 +1,5 @@
+uses data.String
+
 data Param {
 	char value[]
 }
@@ -46,19 +48,23 @@ component
     hash.Multiplicative hash,
     serverctl.Serverctl SCTL
 {
-	IPAddr remoteIps[] = null
+	IPAddr remoteDistIps[] = null
+  IPAddr remoteListsIps[] = null
 
 	void startRemoteIps() {
-		int numberOfPods = SCTL.get_quantity()
-    	remoteIps = new IPAddr[numberOfPods]
-    	char namePrefix[] = "remotedist"
-    	for (int i = 0; i < numberOfPods ; i++){
-			char finalname[] = "$namePrefix$i"
-			remoteIps[i] = new IPAddr()
-			remoteIps[i].ip = new char[](finalname)
-			remoteIps[i].port = 5000
+		String pods[] = SCTL.get_service_names()
+    remoteDistIps = new IPAddr[pods.arrayLength]
+    remoteListsIps = new IPAddr[pods.arrayLength] 
+    for (int i = 0; i < pods.arrayLength; i++){
+      remoteDistIps[i] = new IPAddr()
+      remoteDistIps[i].ip = new char[]("$(pods[i].string)")
+      remoteDistIps[i].port = 5000
+
+      remoteListsIps[i] = new IPAddr()
+      remoteListsIps[i].ip = new char[]("$(pods[i].string)")
+      remoteListsIps[i].port = 5001
 		}
-    }
+  }
 
 	Response parseResponse(char content[]) {
 		String helper[] = strUtil.explode(content, "!")
@@ -98,6 +104,8 @@ component
 	}
 
 	bool establishConnection(IPAddr addr, TCPSocket remoteObj) {
+    out.println("$(addr.ip)")
+    out.println("$(iu.intToString(addr.port))")
 		if (!remoteObj.connect(addr.ip, addr.port)) {
 			out.println("Connection error!")
 			return false
@@ -116,6 +124,7 @@ component
 		return resp
 	}
 
+
 	void List:add(Data item) {
 		// build request
 		Request request = new Request()
@@ -124,9 +133,8 @@ component
 		char requestStr[] = parser.jsonFromData(request, null)
 		char param[] = parser.jsonFromData(item, null)
 		char content2[] = new char[](requestStr, "!", param, "\r\r\r\r")
-		// get the replica IP based on the item hash
 		Int num = item
-		IPAddr addr = remoteIps[hash.h(num.i, remoteIps.arrayLength)]
+		IPAddr addr = remoteListsIps[hash.h(num.i, remoteListsIps.arrayLength)]
 		// send to remote list
 		makeRequest(addr, content2, false)
 	}
@@ -172,8 +180,8 @@ component
 		char content2[] = new char[](requestStr, "!", " ", "\r\r\r\r")
 		// get the length from each replica to return the full length
 		int totalContents = 0
-		for (int i = 0; i < remoteIps.arrayLength; i++) {
-			Response response = makeRequest(remoteIps[i], content2, true)
+		for (int i = 0; i < remoteListsIps.arrayLength; i++) {
+			Response response = makeRequest(remoteListsIps[i], content2, true)
 			totalContents += iu.intFromString(response.value)
 		}
 		return totalContents
@@ -186,15 +194,15 @@ component
 		request.numParams = 0
 		char requestStr[] = parser.jsonFromData(request, null)
 		char content2[] = new char[](requestStr, "!", " ", "\r\r\r\r")
-		// get the contents from all replicas
 		Int contents[] = null
-		for (int i = 0; i < remoteIps.arrayLength; i++) {
-			Response response = makeRequest(remoteIps[i], content2, true)
+		for (int i = 0; i < remoteListsIps.arrayLength; i++) {
+			Response response = makeRequest(remoteListsIps[i], content2, true)
 			Int nums[] = parser.jsonToArray(response.value, typeof(Int[]), null)
 			contents = new Int[](contents, nums)
 		}
 		return contents
 	}
+
 
 	void buildFromArray(Data items[]) {
 		// TODO
@@ -210,38 +218,42 @@ component
 	}
 
 	void Destructor:destroy() {
+		
 	}
 
 	void AdaptEvents:inactive() {
 		if (content != null) {
 			content = getContents()
 			char msg[] = new char[]("clearList!\r\r\r\r")
-			xavasca()             
-			for (int i = 0; i < remoteIps.arrayLength; i++) {
-				makeRequest(remoteIps[i], msg, true)
+			startRemoteIps()             
+			for (int i = 0; i < remoteDistIps.arrayLength; i++) {
+				makeRequest(remoteDistIps[i], msg, true)
 			}
 		}
 	}
 
 	void AdaptEvents:active() {
+    out.println("OI")
 		if (content != null) {
+      out.println("O2")
 			startRemoteIps()
-			ShardState shardState[] = new ShardState[remoteIps.arrayLength]
-
+      out.println("O3")
+			ShardState shardState[] = new ShardState[remoteDistIps.arrayLength]
 			for (int i = 0; i < content.arrayLength; i++) {
 				Int num = content[i]
-				int remoteIdx = hash.h(num.i, remoteIps.arrayLength)
+				int remoteIdx = hash.h(num.i, remoteDistIps.arrayLength)
 				if (shardState[remoteIdx] == null) {
 					shardState[remoteIdx] = new ShardState()
 				}
 				shardState[remoteIdx].state = new Int[](shardState[remoteIdx].state, num)
 			}
 
-			for (int i = 0; i < remoteIps.arrayLength; i++) {
+			for (int i = 0; i < remoteDistIps.arrayLength; i++) {
 				char state[] = parser.jsonFromArray(shardState[i].state, null)
 				char msg[] = new char[]("../distributor/RemoteList.o!", state, "\r\r\r\r")
-				makeRequest(remoteIps[i], msg, true)
+				makeRequest(remoteDistIps[i], msg, true)
 			}
+      out.println("O3")
 		}
 	}
 }

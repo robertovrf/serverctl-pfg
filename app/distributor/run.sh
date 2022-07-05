@@ -1,0 +1,1 @@
+dana -sp "../server;../readn" Distributor.o
