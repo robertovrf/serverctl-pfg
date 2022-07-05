@@ -48,7 +48,7 @@ component
 {
 	IPAddr remoteIps[] = null
 
-	void xavasca() {
+	void startRemoteIps() {
 		int numberOfPods = SCTL.get_quantity()
     	remoteIps = new IPAddr[numberOfPods]
     	char namePrefix[] = "remotedist"
@@ -225,7 +225,7 @@ component
 
 	void AdaptEvents:active() {
 		if (content != null) {
-			xavasca()
+			startRemoteIps()
 			ShardState shardState[] = new ShardState[remoteIps.arrayLength]
 
 			for (int i = 0; i < content.arrayLength; i++) {

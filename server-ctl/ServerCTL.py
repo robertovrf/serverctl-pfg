@@ -1,7 +1,6 @@
 from flask import Flask, jsonify,request
 import yaml, time
 from kubernetes import client, config
-from kubernetes.client.api import core_v1_api
 
 app = Flask(__name__)
 
@@ -68,9 +67,13 @@ def create_deployment(name):
   k8s_apps_v1 = client.AppsV1Api()
   k8s_apps_v1.create_namespaced_deployment(body=deployment,namespace="default")
 
-  service = load_service(name)
-  k8s_client = client.CoreV1Api()
-  k8s_client.create_namespaced_service(body=service, namespace="default")
+  try:
+    service = load_service(name)
+    k8s_client = client.CoreV1Api()
+    k8s_client.create_namespaced_service(body=service, namespace="default")
+  except:
+    print("Service already created")
+  
 
 ### ENDPOINTS
 
