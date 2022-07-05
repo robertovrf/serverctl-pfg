@@ -1,6 +1,6 @@
 from flask import Flask, jsonify,request
 import yaml, time
-from kubernetes import client, config, utils
+from kubernetes import client, config
 from kubernetes.client.api import core_v1_api
 
 app = Flask(__name__)
@@ -60,51 +60,17 @@ def load_service(deployment_name):
         targetPort: 5001
       selector:
         app: {deployment_name}
-        type: CluseterIP
+        type: ClusterIP
   ''')
   
 def create_deployment(name):
   deployment = load_deployment(name)
-  api_instance = core_v1_api.CoreV1Api()
   k8s_apps_v1 = client.AppsV1Api()
-  resp = k8s_apps_v1.create_namespaced_deployment(body=deployment,namespace="default")
+  k8s_apps_v1.create_namespaced_deployment(body=deployment,namespace="default")
 
   service = load_service(name)
-  k8s_client = client.ApiClient()
-  utils.create_from_yaml(k8s_client, service)
-
-def create_service(deployment_name):
-  core_v1_api = client.CoreV1Api()
-  body = client.V1Service(
-    api_version="v1",
-    kind="Service",
-    metadata=client.V1ObjectMeta(name="%s-service" % deployment_name),
-    spec=client.V1ServiceSpec(
-      selector={"app": deployment_name},
-      ports=[client.V1ServicePort(
-        name='tcp1',
-        port=5000,
-        target_port=5000),
-
-      client.V1ServicePort(
-        name='tcp2',
-        port=5001,
-        target_port=5001
-      )]
-    )
-  )
-  #Creation of the deployment on namespace default
-  core_v1_api.create_namespaced_service(namespace="default", body=body)
-
-# def get_cluster_ip(deployment_name):
-#   core_v1_api = client.CoreV1Api()
-#   service = core_v1_api.read_namespaced_service(name="%s-service" % deployment_name, namespace="default")
-#   return service.spec.cluster_ip
-
-# def verify_status(pod_name):
-#   core_v1 = core_v1_api.CoreV1Api()
-#   api_response = core_v1.read_namespaced_pod(name=pod_name,namespace="default")
-#   return api_response.status.phase
+  k8s_client = client.CoreV1Api()
+  k8s_client.create_namespaced_service(body=service, namespace="default")
 
 ### ENDPOINTS
 
@@ -137,7 +103,6 @@ def createPods():
     })
   number_of_pods += quantity
   return jsonify({'name' : names[-1]}), 201
-
 
 if __name__ == '__main__':
   #config.load_kube_config() # to work localy
