@@ -27,7 +27,7 @@ def load_deployment(deployment_name):
         spec:
           containers:
           - name: {deployment_name}
-            image: gcr.io/pfg2022/remote-dist
+            image: robertovrf/remote-dist:latest
             imagePullPolicy: Always
             ports:
             - containerPort: 5000
