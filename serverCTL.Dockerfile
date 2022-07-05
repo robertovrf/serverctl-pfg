@@ -1,7 +1,7 @@
 FROM python:3
 
 WORKDIR /home/ubuntu/ServerCTL
-COPY ../server-ctl .
+COPY /server-ctl .
 
 RUN pip3 install kubernetes
 RUN pip3 install pyyaml
