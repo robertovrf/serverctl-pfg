@@ -1,5 +1,5 @@
 component provides App requires io.Output out, net.http.HTTPRequest http {
-	char server[] = "35.188.22.158"
+	char server[] = "34.67.48.209"
 
 	int App:main(AppParam params[]) {
 		
