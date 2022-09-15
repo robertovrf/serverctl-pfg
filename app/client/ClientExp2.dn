@@ -45,7 +45,7 @@ component provides App requires io.Output out, net.http.HTTPRequest http,
         ranNum.setSeed(34)
         DateTime dt1 = ic.getTime()
         out.println("$(iu.intToString(dt1.hour)):$(iu.intToString(dt1.minute)):$(iu.intToString(dt1.second))")
-        for (int i = 0; i < 3000; i++) {
+        for (int i = 0; i < 93; i++) {
             int num = ranNum.getInt(101) 
             addRequest(num)
         }
