@@ -1,6 +1,5 @@
 data PrimaryType{
 	char type[]
-	char package[]
 	char htmlFile[]
 	}
 
@@ -25,24 +24,6 @@ component provides App requires parsing.DocBuilder, io.File, io.FileSystem fileS
 		char tpath[] = new char[](path, "_$type.html")
 		
 		return tpath
-		}
-	
-	char[] getPackageFor(char sourceFile[], char type[])
-		{
-		char path[] = stringUtil.subString(sourceFile, 0, stringUtil.rfind(sourceFile, "."))
-		
-		path = stringUtil.implode(stringUtil.explode(path, "/\\"), "/")
-		
-		//replace the start of the path (i.e. "resources") with "doc"
-		String tokens[] = clone stringUtil.explode(path, "/")
-		tokens[0] = new String("")
-		tokens[tokens.arrayLength-1] = new String("")
-		path = clone stringUtil.implode(tokens, ".")
-		path[0] = " "
-		path[path.arrayLength-1] = " "
-		path = stringUtil.trim(path)
-		
-		return path
 		}
 	
 	char[] getTypeSource(SourceFile sf, char type[])
@@ -830,17 +811,13 @@ component provides App requires parsing.DocBuilder, io.File, io.FileSystem fileS
 						//check the file exists (it won't do if it's a deprecated API)
 						if (fileSystem.exists("$OUTPUT_DIR/files/$xf"))
 							{
-							char pkg[] = getPackageFor(p.primaryFiles[i].path, type)
-							
-							types = new PrimaryType[](types, new PrimaryType(type, pkg, xf))
+							types = new PrimaryType[](types, new PrimaryType(type, xf))
 							}
 						}
 					}
 				
 				//sort alphabetically
 				sortTypes(types)
-				
-				PrimaryType duplicateNames[] = dsearch.findDuplicates(types, PrimaryType.[type])
 				
 				char dana_home[] = systemInfo.getVariable("DANA_HOME")
 				
@@ -851,12 +828,7 @@ component provides App requires parsing.DocBuilder, io.File, io.FileSystem fileS
 				for (int i = 0; i < types.arrayLength; i++)
 					{
 					fd.write("<div>")
-					
-					if (duplicateNames.findFirst(PrimaryType.[type], types[i]) != null)
-						fd.write("<a href = \"files/$(types[i].htmlFile)\" target = \"_core\">$(types[i].type)</a> <span class = \"index_pkg_dis\">[$(types[i].package)]</span>")
-						else
-						fd.write("<a href = \"files/$(types[i].htmlFile)\" target = \"_core\">$(types[i].type)</a>")
-					
+					fd.write("<a href = \"files/$(types[i].htmlFile)\" target = \"_core\">$(types[i].type)</a>")
 					fd.write("</div>")
 					}
 				

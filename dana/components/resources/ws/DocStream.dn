@@ -17,7 +17,7 @@ interface DocStream {
 	/* {"@description" : "Pop headers to next context on the stack."} */
 	void popContext()
 	
-	/* {"@description" : "Set a piece of session state, identified by a given key, to equal a given value. This causes a cookie to be set, so that this session state is available on subsequent web requests. This function must be called before any use of write(), setStatusCode(), or setHeaders()."} */
+	/* {"@description" : "Set a piece of session state, identified by a given key, to equal a given value. This causes a cookie to be set, so that this session state is available on subsequent web requests. This function must be called before any use of write() or writeStatus()."} */
 	void setSessionKey(char key[], char value[])
 	
 	/*
@@ -27,27 +27,27 @@ interface DocStream {
 	char[] getSessionKey(char key[])
 	
 	/*
-	 {"@description" : "Delete a piece of session state, identified by a given key. The deleted session state will no longer be available to subsequent web requests. This function must be called before any use of write(), setStatusCode(), or setHeaders()."}
+	 {"@description" : "Delete a piece of session state, identified by a given key. The deleted session state will no longer be available to subsequent web requests. This function must be called before any use of write() or writeStatus()."}
 	*/
 	void remSessionKey(char key[])
 	
 	/*
-	 {"@description" : "Set the status code that will be used for this response. This must be used before any data is sent (e.g. via write()). No data is sent as a result of this function call. If directStream is set to true, response data is sent immediately by calls to write()."}
+	 {"@description" : "Send data to the connected client. By default, content is assumed to be text (HTML) and uses chunked encoding; other content types should be indicated by first using writeStatus()."}
 	*/
 	void setStatusCode(int code, char reason[], bool directStream)
 	
 	/*
-	 {"@description" : "Set the response headers that will be used for this response. This must be used before any data is sent (e.g. via write()). No data is sent as a result of this function call."}
+	 {"@description" : "Send data to the connected client. By default, content is assumed to be text (HTML) and uses chunked encoding; other content types should be indicated by first using writeStatus()."}
 	*/
 	void setHeaders(store Header headers[])
 	
 	/*
-	 {"@description" : "Send data to the connected client. Unless directStream has been set to true via setStatusCode(), data passed to this function may be buffered into larger chunks before actually being sent to the client. By default, content is assumed to be text (HTML) and uses chunked encoding; other content types should be indicated by first using setStatusCode() / setHeaders()."}
+	 {"@description" : "Send data to the connected client. By default, content is assumed to be text (HTML) and uses chunked encoding; other content types should be indicated by first using writeStatus()."}
 	*/
 	void write(char str[])
 	
 	/*
-	 {"@description" : "Indicate that sending of response data is complete. After this function has been called, no further data can be sent in response to this request."}
+	 {"@description" : "Indicate that sending of response data is complete. This function is automatically called by the web framework and so does not need to be used by the web app. After this function has been called, no further data can be sent in response to this request."}
 	*/
 	void sendResponse()
 	
