@@ -1,6 +1,0 @@
-{
-"defaultLinks":	[
-				{"interface": "Font", "component": "IOLayer"}
-				{"interface": "IOWindow", "component": "IOLayer"}
-				]
-}

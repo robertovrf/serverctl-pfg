@@ -1,8 +1,0 @@
-/*
- {"description" : "Contains a key/value pair, used to represent a HTTP header."}
-*/
-
-data Header {
-	char key[]
-	char value[]
-	}
