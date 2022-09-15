@@ -1,0 +1,38 @@
+/*
+{ "description" : "Wrapper interface around the REST API for the perception and assembly elements of the PAL framework. Calls on this interface are translated to RESTful web server calls against the specified serverAddress and port." }
+*/
+
+uses data.String
+uses time.DateTime
+uses pal.Perception
+uses pal.Assembly
+
+interface RestAPI {
+	
+	RestAPI(char serverAddress[], int port)
+	
+	String[] getConfigs()
+	
+	char[] getConfig()
+	
+	bool setConfig(char str[])
+	
+	PerceptionData getPerception()
+	
+	char[] getSystemPath()
+	
+	bool addComponent(char str[])
+	
+	bool remComponent(char str[])
+	
+	char[] updComponent(char str[])
+	
+	char[] updArch(String intfs[])
+	
+	bool addIntercept(char intf[], char cmp[])
+	
+	bool remIntercept(char intf[], char cmp[])
+	
+	InterceptInfo[] getIntercepts()
+	
+	}

@@ -1,0 +1,221 @@
+interface MathLib {
+	dec sqrt(dec val)
+	
+	dec pow(dec val, dec power)
+	dec root(dec val, dec root)
+	
+	dec log(dec val)
+	dec natlog(dec val)
+	dec natexp(dec val)
+	
+	dec cos(dec val)
+	dec sin(dec val)
+	dec tan(dec val)
+	
+	dec acos(dec val)
+	dec asin(dec val)
+	dec atan(dec val)
+	
+	dec cosh(dec val)
+	dec sinh(dec val)
+	dec tanh(dec val)
+	
+	dec acosh(dec val)
+	dec asinh(dec val)
+	dec atanh(dec val)
+	}
+
+component provides util.Math requires native MathLib lib, io.Output out, data.DecUtil decUtil {
+
+	dec Math:floor(dec val)
+		{
+		char k[] = clone decUtil.decToString(val)
+		
+		if (val >= 0.0)
+			{
+			bool dotOn = false
+			for (int i = 0; i < k.arrayLength; i++)
+				{
+				if (dotOn)
+					k[i] = "0"
+				
+				if (k[i] == ".")
+					dotOn = true
+				}
+			
+			return decUtil.decFromString(k)
+			}
+			else
+			{
+			bool higher = false
+			bool dotOn = false
+			for (int i = 0; i < k.arrayLength; i++)
+				{
+				if (dotOn)
+					{
+					if (k[i] != "0") higher = true
+					k[i] = "0"
+					}
+				
+				if (k[i] == ".")
+					dotOn = true
+				}
+			
+			dec res = decUtil.decFromString(k)
+			if (higher) res -= 1.0
+			return res
+			}
+		}
+	
+	dec Math:ceil(dec val)
+		{
+		char k[] = clone decUtil.decToString(val)
+		
+		if (val >= 0.0)
+			{
+			bool dotOn = false
+			bool higher = false
+			for (int i = 0; i < k.arrayLength; i++)
+				{
+				if (dotOn)
+					{
+					if (k[i] != "0") higher = true
+					k[i] = "0"
+					}
+				
+				if (k[i] == ".")
+					dotOn = true
+				}
+			
+			dec res = decUtil.decFromString(k)
+			if (higher) res += 1.0
+			return res
+			}
+			else
+			{
+			bool dotOn = false
+			for (int i = 0; i < k.arrayLength; i++)
+				{
+				if (dotOn)
+					k[i] = "0"
+				
+				if (k[i] == ".")
+					dotOn = true
+				}
+			
+			return decUtil.decFromString(k)
+			}
+		}
+	
+	dec Math:round(dec val)
+		{
+		dec sign = 1.0
+		if (val < 0.0) sign = -1.0
+		
+		dec nval = val * sign
+		
+		int trunc = nval
+		
+		dec tdec = trunc
+		
+		dec frac = nval - tdec
+		
+		if (frac >= 0.5)
+			return (tdec + 1) * sign
+			else
+			return (tdec) * sign
+		}
+	
+	//NOTE: the below functions are all implemented using the C math library via double types, with associated precision differences
+	
+	dec Math:sqrt(dec n)
+		{
+		return lib.sqrt(n)
+		}
+	
+	dec Math:power(dec n, dec p)
+		{
+		return lib.pow(n, p)
+		}
+	
+	dec Math:rootn(dec n, dec r)
+		{
+		return lib.root(n, r)
+		}
+	
+	dec Math:log(dec n)
+		{
+		return lib.log(n)
+		}
+	
+	dec Math:natlog(dec n)
+		{
+		return lib.natlog(n)
+		}
+	
+	dec Math:natexp(dec n)
+		{
+		return lib.natexp(n)
+		}
+	
+	dec Math:cos(dec n)
+		{
+		return lib.cos(n)
+		}
+	
+	dec Math:sin(dec n)
+		{
+		return lib.sin(n)
+		}
+	
+	dec Math:tan(dec n)
+		{
+		return lib.tan(n)
+		}
+	
+	dec Math:acos(dec n)
+		{
+		return lib.acos(n)
+		}
+	
+	dec Math:asin(dec n)
+		{
+		return lib.asin(n)
+		}
+	
+	dec Math:atan(dec n)
+		{
+		return lib.atan(n)
+		}
+	
+	dec Math:cosh(dec n)
+		{
+		return lib.cosh(n)
+		}
+	
+	dec Math:sinh(dec n)
+		{
+		return lib.sinh(n)
+		}
+	
+	dec Math:tanh(dec n)
+		{
+		return lib.tanh(n)
+		}
+	
+	dec Math:acosh(dec n)
+		{
+		return lib.acosh(n)
+		}
+	
+	dec Math:asinh(dec n)
+		{
+		return lib.asinh(n)
+		}
+	
+	dec Math:atanh(dec n)
+		{
+		return lib.atanh(n)
+		}
+	
+	}

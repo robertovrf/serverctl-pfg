@@ -1,0 +1,20 @@
+/*
+ {"description" : "Convert between integers and strings."}
+*/
+
+interface IntUtil{
+	/*
+	 {"@description" : "Convert an integer to a string.", "@deprecated" : true}
+	*/
+	char[] intToString(int i)
+	
+	/*
+	 {"@description" : "Convert a string to an integer."}
+	*/
+	int intFromString(char s[])
+	
+	/*
+	 {"@description" : "Convert an integer to a string."}
+	*/
+	char[] makeString(int i)
+	}

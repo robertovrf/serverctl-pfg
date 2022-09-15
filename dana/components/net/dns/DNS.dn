@@ -1,0 +1,11 @@
+interface DNSLib{
+	char[] getHostIP(char hostname[])
+	}
+
+component provides DNS requires native DNSLib lib
+	{
+	char[] DNS:getHostIP(char hostname[])
+		{
+		return lib.getHostIP(hostname)
+		}
+	}

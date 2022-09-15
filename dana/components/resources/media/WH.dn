@@ -1,0 +1,6 @@
+/* {"description" : "Data type used a represent the width and height of something, usually in pixels." } */
+
+data WH{
+	int width
+	int height
+	}

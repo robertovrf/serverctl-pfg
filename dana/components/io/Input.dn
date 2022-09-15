@@ -1,0 +1,12 @@
+interface CmdLib{
+	char[] getLine()
+	}
+
+component provides io.Input requires native CmdLib lib {
+	
+	char[] Input:readln()
+		{
+		return lib.getLine()
+		}
+	
+	}
