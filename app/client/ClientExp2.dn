@@ -1,0 +1,56 @@
+const char debugMSG[] = "[@ClientCloudAM]"
+
+component provides App requires io.Output out, net.http.HTTPRequest http, 
+    data.IntUtil iu, data.StringUtil su, time.DateUtil dateUtil, time.Calendar ic,
+    util.Random ranNum {
+	
+    char baseUrl[] = "http://localhost:8080/"
+	char addOp[] = "add"
+	char getOp[] = "get"
+
+	void addRequest(int value) {
+		char strValue[] = new char[](iu.makeString(value))
+		char endpoint[] = new char[](baseUrl, addOp)
+        DateTime dt1 = null
+        DateTime dt2 = null
+        dt1 = ic.getTime()
+
+		HTTPResponse resp = http.post(endpoint, null, strValue)
+		//out.println("$(resp.content)")
+        
+        dt2 = ic.getTime()
+        if ((dt1 != null) && (dt2 != null)) {
+            int result = dateUtil.toMilliseconds(dateUtil.diff(dt1, dt2))
+            out.println("$(debugMSG) ADD $(iu.intToString(result))")
+        }
+	}
+
+	void getRequest() {
+		char endpoint[] = new char[](baseUrl, getOp)
+        DateTime dt1 = null
+        DateTime dt2 = null
+        dt1 = ic.getTime()
+
+		HTTPResponse resp = http.get(endpoint, null)
+		//out.println("$(resp.content)")
+
+        dt2 = ic.getTime()
+        if ((dt1 != null) && (dt2 != null)) {
+            int result = dateUtil.toMilliseconds(dateUtil.diff(dt1, dt2))
+            out.println("$(debugMSG) GET $(iu.intToString(result))")
+        }
+	}
+
+	int App:main(AppParam params[]) {
+        ranNum.setSeed(34)
+        DateTime dt1 = ic.getTime()
+        out.println("$(iu.intToString(dt1.hour)):$(iu.intToString(dt1.minute)):$(iu.intToString(dt1.second))")
+        for (int i = 0; i < 3000; i++) {
+            int num = ranNum.getInt(101) 
+            addRequest(num)
+        }
+        DateTime dt2 = ic.getTime()
+        out.println("$(iu.intToString(dt2.hour)):$(iu.intToString(dt2.minute)):$(iu.intToString(dt2.second))")
+		return 0
+	}
+}

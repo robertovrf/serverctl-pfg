@@ -1,1 +1,1 @@
-dana -sp "../server;../readn" Distributor.o
+dana -sp "../server;../writen" Distributor.o
