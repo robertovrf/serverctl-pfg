@@ -1,0 +1,27 @@
+const char debugMSG[] = "[@ClientCloudAM]"
+
+component provides App requires io.Output out, net.http.HTTPRequest http, 
+    data.IntUtil iu, data.StringUtil su, time.DateUtil dateUtil, time.Calendar ic,
+    util.Random ranNum {
+	
+    void testando(int TAMANHO) {
+        DateTime dt1 = ic.getTime()
+        for (int i = 0; i < TAMANHO * 500000; i++) {
+            // ocupado
+        }
+        DateTime dt2 = ic.getTime()
+		if ((dt1 != null) && (dt2 != null)) {
+            int result = dateUtil.toMilliseconds(dateUtil.diff(dt1, dt2))
+            out.println("$(debugMSG) TEMPO: $(iu.intToString(result)) - TAMANHO ($(iu.intToString(TAMANHO)))")
+        }
+    }
+
+	int App:main(AppParam params[]) {
+        //ranNum.setSeed(34)
+        for (int tamanho = 1; tamanho < 1000000; tamanho++) {
+            testando(tamanho)
+        }
+        
+        return 0
+	}
+}

@@ -4,7 +4,7 @@ component provides App requires io.Output out, net.http.HTTPRequest http,
     data.IntUtil iu, data.StringUtil su, time.DateUtil dateUtil, time.Calendar ic,
     util.Random ranNum {
 	
-    char baseUrl[] = "http://35.192.156.220:8080/"
+    char baseUrl[] = "http://35.192.156.220:5000/"
 	char addOp[] = "add"
 	char getOp[] = "get"
 
