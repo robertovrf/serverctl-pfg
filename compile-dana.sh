@@ -1,4 +1,5 @@
 cd app/client
+../.././dana/dana
 ../.././dana/dnc . -v
 cd ../readn
 ../../dana/dnc . -v
