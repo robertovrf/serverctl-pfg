@@ -1,13 +1,13 @@
 cd app/client
-dnc . -v
+../dana/dnc . -v
 cd ../readn
-dnc . -v
+../dana/dnc . -v
 cd ../readn-writen
-dnc . -v
+../dana/dnc . -v
 cd ../writen
-dnc . -v
+../dana/dnc . -v
 cd ../server
-dnc . -v
+../dana/dnc . -v
 cd ../distributor
-dnc . -sp ../server -v
+../dana/dnc . -sp ../server -v
 cd ..
