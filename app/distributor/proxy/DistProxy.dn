@@ -31,14 +31,12 @@ component provides proxy.DistProxy requires io.Output out, data.IntUtil iu, net.
 	TCPServerSocket host
 
 	Response addRequest(Request request) {
+		out.println("ADD REQUEST")
 		Response response = new Response()
-
 		Int item = parser.jsonToData(request.params[0].value, typeof(Int), null)
 		list.add(item)
-
 		response.status = 1
 		response.value = ""
-
 		return response
 	}
 
@@ -67,6 +65,7 @@ component provides proxy.DistProxy requires io.Output out, data.IntUtil iu, net.
 
 	Response interpretRequest(Request request) {
 		if (request.functionName == ADD) {
+			out.println("ADD FUNCTION")
 			return addRequest(request)
 
 		} else if (request.functionName == GET_LENGTH) {
@@ -120,16 +119,20 @@ component provides proxy.DistProxy requires io.Output out, data.IntUtil iu, net.
 	}
 
 	void processRequest(TCPSocket s) {
+		out.println("PROCESSING")
 		Response response = new Response()
 		Request request = readRequest(s)
+		out.println("READ REQUEST")
 		char content[]
 		if (request == null) {
 			response.status = 2
 			response.value = null
 		} else {
+			out.println("INTERPRET")
 			response = interpretRequest(request)
 		}
 		if (response.status == 3) {
+			out.println("STATUS 3")
 			response.status = 2
 			char value[] = response.value
 			response.value = ""
@@ -137,7 +140,9 @@ component provides proxy.DistProxy requires io.Output out, data.IntUtil iu, net.
 		} else {
 			content = new char[](parser.jsonFromData(response,null), "\r\r\r\r")
 		}
+		out.println("SEND")
 		s.send(content)
+		out.println("DISCONNECT")
 		s.disconnect()
 	}
 

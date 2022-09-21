@@ -36,33 +36,25 @@ const char GET_LENGTH[]   = "getLength"
 const char GET_CONTENTS[] = "getContents"
 const char CLEAR_LIST[]   = "clearList"
 
-component 
-  provides
-    List:heap(Destructor, AdaptEvents) 
-  requires 
-    net.TCPSocket,
-    data.json.JSONEncoder parser,
-    data.StringUtil strUtil,
-    data.IntUtil iu,
-    io.Output out,
-    hash.Multiplicative hash,
-    serverctl.Serverctl SCTL
-{
+component provides List:heap(Destructor, AdaptEvents) requires net.TCPSocket, data.json.JSONEncoder parser,
+    data.StringUtil strUtil, data.IntUtil iu, io.Output out, 
+	hash.Multiplicative hash, serverctl.Serverctl SCTL {
+	
 	IPAddr remoteDistIps[] = null
-  IPAddr remoteListsIps[] = null
+  	IPAddr remoteListsIps[] = null
 
 	void startRemoteIps() {
 		String pods[] = SCTL.get_service_names()
-    remoteDistIps = new IPAddr[pods.arrayLength]
-    remoteListsIps = new IPAddr[pods.arrayLength] 
-    for (int i = 0; i < pods.arrayLength; i++){
-      remoteDistIps[i] = new IPAddr()
-      remoteDistIps[i].ip = new char[]("$(pods[i].string)")
-      remoteDistIps[i].port = 5000
+		remoteDistIps = new IPAddr[pods.arrayLength]
+		remoteListsIps = new IPAddr[pods.arrayLength] 
+		for (int i = 0; i < pods.arrayLength; i++) {
+			remoteDistIps[i] = new IPAddr()
+			remoteDistIps[i].ip = new char[]("$(pods[i].string)")
+			remoteDistIps[i].port = 5000
 
-      remoteListsIps[i] = new IPAddr()
-      remoteListsIps[i].ip = new char[]("$(pods[i].string)")
-      remoteListsIps[i].port = 5001
+			remoteListsIps[i] = new IPAddr()
+			remoteListsIps[i].ip = new char[]("$(pods[i].string)")
+			remoteListsIps[i].port = 5001
 		}
   }
 
@@ -104,8 +96,8 @@ component
 	}
 
 	bool establishConnection(IPAddr addr, TCPSocket remoteObj) {
-    out.println("$(addr.ip)")
-    out.println("$(iu.intToString(addr.port))")
+		out.println("$(addr.ip)")
+		out.println("$(iu.intToString(addr.port))")
 		if (!remoteObj.connect(addr.ip, addr.port)) {
 			out.println("Connection error!")
 			return false
@@ -116,9 +108,15 @@ component
 	Response makeRequest(IPAddr addr, char content[], bool readResponse) {
     TCPSocket remoteObj = new TCPSocket()
 		Response resp = null
+		out.println("ESTABLISH CONNECTION")
 		if (establishConnection(addr, remoteObj)) {
+			out.println("SENT DATA")
 			remoteObj.send(content)
-			if (readResponse) { resp = readResponse(remoteObj) }
+			if (readResponse) {
+				out.println("READ RESPONSE") 
+				resp = readResponse(remoteObj)
+			}
+			out.println("DISCONNECT")
 			remoteObj.disconnect()
 		}
 		return resp
@@ -143,6 +141,7 @@ component
 
 		IPAddr addr = remoteListsIps[hash.h(num.i, remoteListsIps.arrayLength)]
 		// send to remote list
+		out.println("MAKING REQUEST")
 		makeRequest(addr, content2, false)
 	}
 
